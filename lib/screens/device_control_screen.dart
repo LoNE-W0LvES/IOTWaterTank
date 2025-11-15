@@ -4,7 +4,6 @@ import '../providers/device_provider.dart';
 import '../widgets/loading_widget.dart';
 import '../widgets/error_widget.dart';
 import '../widgets/control_widgets.dart';
-import '../config/app_config.dart';
 
 /// Device control screen with interactive controls and telemetry display
 class DeviceControlScreen extends StatelessWidget {
