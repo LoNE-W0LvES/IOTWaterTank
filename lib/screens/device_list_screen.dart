@@ -6,6 +6,7 @@ import '../widgets/loading_widget.dart';
 import '../widgets/error_widget.dart';
 import '../widgets/device_card.dart';
 import 'device_control_screen.dart';
+import '../config/app_config.dart';
 
 /// Device list screen with filtering and pull-to-refresh
 class DeviceListScreen extends StatefulWidget {
@@ -125,17 +126,19 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
       appBar: AppBar(
         title: const Text('Devices'),
         actions: [
-          Consumer<DeviceProvider>(
-            builder: (context, deviceProvider, child) {
-              return IconButton(
-                icon: Badge(
-                  isLabelVisible: deviceProvider.selectedProjectId != null,
-                  child: const Icon(Icons.filter_list),
-                ),
-                onPressed: _showProjectFilter,
-              );
-            },
-          ),
+          // Only show filter button if no project is hardcoded in config
+          if (AppConfig.projectId == null)
+            Consumer<DeviceProvider>(
+              builder: (context, deviceProvider, child) {
+                return IconButton(
+                  icon: Badge(
+                    isLabelVisible: deviceProvider.selectedProjectId != null,
+                    child: const Icon(Icons.filter_list),
+                  ),
+                  onPressed: _showProjectFilter,
+                );
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: _handleLogout,

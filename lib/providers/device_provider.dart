@@ -3,6 +3,7 @@ import '../models/device.dart';
 import '../models/control_data.dart';
 import '../services/device_service.dart';
 import '../utils/api_exception.dart';
+import '../config/app_config.dart';
 
 /// Provider for device state management
 class DeviceProvider with ChangeNotifier {
@@ -43,7 +44,10 @@ class DeviceProvider with ChangeNotifier {
     _setError(null);
 
     try {
-      _devices = await _deviceService.getDevices(assignedOnly: assignedOnly);
+      _devices = await _deviceService.getDevices(
+        assignedOnly: assignedOnly,
+        projectId: AppConfig.projectId, // Use configured project ID
+      );
       _setLoading(false);
     } on ApiException catch (e) {
       _setError(e.message);

@@ -19,6 +19,10 @@ class AppConfig {
   static const String appName = 'IoT Water Tank';
   static const String appVersion = '1.0.0';
 
+  // Project Filter - Set this to filter devices by specific project
+  // Set to null to show all projects
+  static const String? projectId = 'wt001';
+
   // Timeouts (in seconds)
   static const int connectionTimeout = 30;
   static const int receiveTimeout = 30;
