@@ -6,6 +6,8 @@ import '../widgets/loading_widget.dart';
 import '../widgets/error_widget.dart';
 import '../widgets/device_card.dart';
 import 'device_control_screen.dart';
+import 'device_settings_screen.dart';
+import 'add_device_screen.dart';
 import '../config/app_config.dart';
 
 /// Device list screen with filtering and pull-to-refresh
@@ -240,16 +242,15 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
                       final device = deviceProvider.devices[index];
                       return DeviceCard(
                         device: device,
-                        onTap: () async {
-                          await deviceProvider.selectDevice(device.id);
-                          if (mounted) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const DeviceControlScreen(),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => DeviceSettingsScreen(
+                                device: device,
                               ),
-                            );
-                          }
+                            ),
+                          );
                         },
                       );
                     },
@@ -259,6 +260,18 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
             ),
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const AddDeviceScreen(),
+            ),
+          );
+        },
+        icon: const Icon(Icons.add),
+        label: const Text('Add Device'),
       ),
     );
   }

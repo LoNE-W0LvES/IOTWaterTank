@@ -191,4 +191,48 @@ class DeviceService {
     }
     return projects;
   }
+
+  /// Claim a device by Device ID
+  Future<Map<String, dynamic>> claimDevice(String deviceId) async {
+    try {
+      final response = await _apiClient.post(
+        '${AppConfig.devicesEndpoint}/claim',
+        data: {'deviceId': deviceId.trim()},
+      );
+
+      if (response.statusCode == 200) {
+        return response.data as Map<String, dynamic>;
+      }
+
+      throw ApiException(
+        message: 'Failed to claim device',
+        statusCode: response.statusCode,
+      );
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException.fromError(e);
+    }
+  }
+
+  /// Unclaim a device (remove from account)
+  Future<Map<String, dynamic>> unclaimDevice(String deviceId) async {
+    try {
+      final response = await _apiClient.post(
+        '${AppConfig.devicesEndpoint}/unclaim',
+        data: {'deviceId': deviceId.trim()},
+      );
+
+      if (response.statusCode == 200) {
+        return response.data as Map<String, dynamic>;
+      }
+
+      throw ApiException(
+        message: 'Failed to remove device',
+        statusCode: response.statusCode,
+      );
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException.fromError(e);
+    }
+  }
 }
