@@ -1,0 +1,194 @@
+import '../config/app_config.dart';
+import '../models/device.dart';
+import '../models/control_data.dart';
+import 'api_client.dart';
+import '../utils/api_exception.dart';
+
+/// Service for managing devices and their control/telemetry data
+class DeviceService {
+  final ApiClient _apiClient = ApiClient();
+
+  /// Initialize the device service
+  Future<void> initialize() async {
+    await _apiClient.initialize();
+  }
+
+  /// Fetch all devices
+  Future<List<Device>> getDevices({
+    bool assignedOnly = true,
+    String? projectId,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{};
+      if (assignedOnly) {
+        queryParams['assignedOnly'] = 'true';
+      }
+      if (projectId != null && projectId.isNotEmpty) {
+        queryParams['projectId'] = projectId;
+      }
+
+      final response = await _apiClient.get(
+        AppConfig.devicesEndpoint,
+        queryParameters: queryParams,
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+
+        // Handle both {data: [...]} and direct array response
+        List<dynamic> deviceList;
+        if (data is Map && data.containsKey('data')) {
+          deviceList = data['data'] as List<dynamic>;
+        } else if (data is List) {
+          deviceList = data;
+        } else {
+          throw ApiException(
+            message: 'Unexpected response format',
+            statusCode: response.statusCode,
+            data: data,
+          );
+        }
+
+        return deviceList
+            .map((json) => Device.fromJson(json as Map<String, dynamic>))
+            .toList();
+      }
+
+      throw ApiException(
+        message: 'Failed to fetch devices',
+        statusCode: response.statusCode,
+      );
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException.fromError(e);
+    }
+  }
+
+  /// Get a single device by ID
+  Future<Device> getDevice(String deviceId) async {
+    try {
+      final response = await _apiClient.get('${AppConfig.devicesEndpoint}/$deviceId');
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+
+        // Handle both {data: {...}} and direct object response
+        Map<String, dynamic> deviceData;
+        if (data is Map && data.containsKey('data')) {
+          deviceData = data['data'] as Map<String, dynamic>;
+        } else if (data is Map<String, dynamic>) {
+          deviceData = data;
+        } else {
+          throw ApiException(
+            message: 'Unexpected response format',
+            statusCode: response.statusCode,
+            data: data,
+          );
+        }
+
+        return Device.fromJson(deviceData);
+      }
+
+      throw ApiException(
+        message: 'Failed to fetch device',
+        statusCode: response.statusCode,
+      );
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException.fromError(e);
+    }
+  }
+
+  /// Update device control data
+  Future<Device> updateControlData(
+    String deviceId,
+    Map<String, ControlData> controlData,
+  ) async {
+    try {
+      // Convert control data to API format
+      final payload = {
+        'controlData': controlData.map(
+          (key, value) => MapEntry(
+            key,
+            value.toJson(),
+          ),
+        ),
+      };
+
+      final response = await _apiClient.patch(
+        '${AppConfig.devicesEndpoint}/$deviceId',
+        data: payload,
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+
+        // Handle both {data: {...}} and direct object response
+        Map<String, dynamic> deviceData;
+        if (data is Map && data.containsKey('data')) {
+          deviceData = data['data'] as Map<String, dynamic>;
+        } else if (data is Map<String, dynamic>) {
+          deviceData = data;
+        } else {
+          throw ApiException(
+            message: 'Unexpected response format',
+            statusCode: response.statusCode,
+            data: data,
+          );
+        }
+
+        return Device.fromJson(deviceData);
+      }
+
+      throw ApiException(
+        message: 'Failed to update control data',
+        statusCode: response.statusCode,
+      );
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException.fromError(e);
+    }
+  }
+
+  /// Update a single control value
+  Future<Device> updateSingleControl(
+    String deviceId,
+    String controlKey,
+    dynamic value,
+    String type,
+  ) async {
+    try {
+      final controlData = {
+        controlKey: ControlData(
+          key: controlKey,
+          type: type,
+          value: value,
+        ),
+      };
+
+      return await updateControlData(deviceId, controlData);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException.fromError(e);
+    }
+  }
+
+  /// Get unique project IDs from devices list (for filtering)
+  Set<String> getProjectIds(List<Device> devices) {
+    return devices
+        .where((device) => device.projectId != null)
+        .map((device) => device.projectId!)
+        .toSet();
+  }
+
+  /// Get unique project names from devices list (for filtering)
+  Map<String, String> getProjects(List<Device> devices) {
+    final projects = <String, String>{};
+    for (final device in devices) {
+      if (device.projectId != null && device.projectName != null) {
+        projects[device.projectId!] = device.projectName!;
+      }
+    }
+    return projects;
+  }
+}
