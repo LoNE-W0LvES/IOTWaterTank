@@ -137,17 +137,15 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
           IconButton(
             icon: const Icon(Icons.settings_remote),
             tooltip: 'Device Controls',
-            onPressed: () async {
-              // Select device and navigate to control screen
-              await context.read<DeviceProvider>().selectDevice(widget.device.id);
-              if (mounted) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const DeviceControlScreen(),
-                  ),
-                );
-              }
+            onPressed: () {
+              // Set device directly (we already have the full object)
+              context.read<DeviceProvider>().setSelectedDevice(widget.device);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const DeviceControlScreen(),
+                ),
+              );
             },
           ),
         ],

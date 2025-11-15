@@ -63,7 +63,7 @@ class DeviceProvider with ChangeNotifier {
     await fetchDevices();
   }
 
-  /// Select a device
+  /// Select a device by fetching from API
   Future<void> selectDevice(String deviceId) async {
     _setLoading(true);
     _setError(null);
@@ -78,6 +78,13 @@ class DeviceProvider with ChangeNotifier {
       _setError('Failed to fetch device details');
       _setLoading(false);
     }
+  }
+
+  /// Set selected device directly (without API call)
+  void setSelectedDevice(Device device) {
+    _selectedDevice = device;
+    _error = null;
+    notifyListeners();
   }
 
   /// Update control data for the selected device
