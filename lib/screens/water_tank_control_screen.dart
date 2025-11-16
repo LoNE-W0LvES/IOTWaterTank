@@ -188,33 +188,43 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
         _buildModernHeader(context, device, isOnline, isDarkMode),
         const SizedBox(height: 32),
 
-        // Circular Water Level with Wave Animation
-        Center(
-          child: CircularWaterLevel(
-            percentage: waterLevel,
-            size: 280,
-            isDarkMode: isDarkMode,
+        // Circular Water Level with Wave Animation (with extra padding to prevent clipping)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          child: Center(
+            child: CircularWaterLevel(
+              percentage: waterLevel,
+              size: 280,
+              isDarkMode: isDarkMode,
+            ),
           ),
         ),
         const SizedBox(height: 40),
 
-        // Metrics Grid (2 columns)
-        _buildMetricCard(
-          context,
-          'Upper Threshold',
-          '${upperThreshold.toStringAsFixed(0)}%',
-          Icons.arrow_upward,
-          isDarkMode,
-          progress: upperThreshold / 100,
-        ),
-        const SizedBox(height: 12),
-
-        _buildMetricCard(
-          context,
-          'Lower Threshold',
-          '${lowerThreshold.toStringAsFixed(0)}%',
-          Icons.arrow_downward,
-          isDarkMode,
+        // Metrics Grid - Thresholds side by side
+        Row(
+          children: [
+            Expanded(
+              child: _buildMetricCard(
+                context,
+                'Upper Threshold',
+                '${upperThreshold.toStringAsFixed(0)}%',
+                Icons.arrow_upward,
+                isDarkMode,
+                progress: upperThreshold / 100,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildMetricCard(
+                context,
+                'Lower Threshold',
+                '${lowerThreshold.toStringAsFixed(0)}%',
+                Icons.arrow_downward,
+                isDarkMode,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
 
@@ -234,7 +244,7 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
             Expanded(
               child: _buildMetricCard(
                 context,
-                'Total Water Used',
+                'Water Used',
                 '${usedTotal.toStringAsFixed(0)}L',
                 Icons.water_drop,
                 isDarkMode,
