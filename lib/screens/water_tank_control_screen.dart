@@ -10,6 +10,7 @@ import '../widgets/error_widget.dart';
 import '../widgets/circular_water_level.dart';
 import '../widgets/theme_toggle.dart';
 import '../widgets/threshold_range_card.dart';
+import '../config/app_config.dart';
 import 'device_config_edit_screen.dart';
 
 /// Redesigned Water Tank Control Screen with theme support
@@ -73,7 +74,7 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
             });
           }
         } catch (e) {
-          print('Auto-refresh failed: $e');
+          AppConfig.deviceLog('Auto-refresh failed: $e');
           deviceProvider.selectDevice(deviceProvider.selectedDevice!.id).then((_) {
             if (mounted) {
               setState(() {

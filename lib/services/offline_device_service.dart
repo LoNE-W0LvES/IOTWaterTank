@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/device.dart';
 import '../models/control_data.dart';
 import '../utils/api_exception.dart';
+import '../config/app_config.dart';
 import 'api_client.dart';
 
 /// Service for offline-capable device operations
@@ -32,17 +33,17 @@ class OfflineDeviceService {
     // Try local connection first if IP is available
     if (localIp != null && localIp.isNotEmpty) {
       try {
-        print('Attempting to fetch device from local IP: $localIp');
+        AppConfig.offlineLog('Attempting to fetch device from local IP: $localIp');
         final localDevice = await _getDeviceFromLocal(deviceId, localIp);
 
         // Cache the data locally
         await _cacheDeviceData(deviceId, localDevice);
 
-        print('Successfully fetched device from local IP');
+        AppConfig.offlineLog('Successfully fetched device from local IP');
         return localDevice;
       } catch (e) {
-        print('Local connection failed: $e');
-        print('Falling back to server...');
+        AppConfig.offlineLog('Local connection failed: $e');
+        AppConfig.offlineLog('Falling back to server...');
       }
     }
 
@@ -59,7 +60,7 @@ class OfflineDeviceService {
       // Try to return cached data if available
       final cachedDevice = await _getCachedDeviceData(deviceId);
       if (cachedDevice != null) {
-        print('Using cached device data (offline mode)');
+        AppConfig.offlineLog('Using cached device data (offline mode)');
         return cachedDevice;
       }
 
@@ -94,17 +95,17 @@ class OfflineDeviceService {
     // Try local connection first if IP is available
     if (localIp != null && localIp.isNotEmpty) {
       try {
-        print('Attempting to update control via local IP: $localIp');
+        AppConfig.offlineLog('Attempting to update control via local IP: $localIp');
         await _updateControlLocal(deviceId, key, value, type, timestamp, localIp);
 
         // Also queue for server sync
         await _queueControlUpdate(deviceId, key, value, type, timestamp);
 
-        print('Control updated via local IP');
+        AppConfig.offlineLog('Control updated via local IP');
         return true;
       } catch (e) {
-        print('Local control update failed: $e');
-        print('Falling back to server...');
+        AppConfig.offlineLog('Local control update failed: $e');
+        AppConfig.offlineLog('Falling back to server...');
       }
     }
 
@@ -125,7 +126,7 @@ class OfflineDeviceService {
     } catch (e) {
       // Queue for later sync
       await _queueControlUpdate(deviceId, key, value, type, timestamp);
-      print('Control update queued for sync (offline mode)');
+      AppConfig.offlineLog('Control update queued for sync (offline mode)');
       return true; // Return true since it's queued
     }
   }
@@ -175,7 +176,7 @@ class OfflineDeviceService {
         final json = jsonDecode(jsonString);
         return Device.fromJson(json);
       } catch (e) {
-        print('Error parsing cached device data: $e');
+        AppConfig.errorLog('Error parsing cached device data', error: e);
         return null;
       }
     }
@@ -278,13 +279,13 @@ class OfflineDeviceService {
           });
 
           synced++;
-          print('Synced ${item['key']} for device ${item['deviceId']}');
+          AppConfig.offlineLog('Synced ${item['key']} for device ${item['deviceId']}');
         } else {
-          print('Skipped ${item['key']} - server has newer data');
+          AppConfig.offlineLog('Skipped ${item['key']} - server has newer data');
           synced++; // Count as synced since we resolved the conflict
         }
       } catch (e) {
-        print('Failed to sync ${item['key']}: $e');
+        AppConfig.offlineLog('Failed to sync ${item['key']}: $e');
         failed++;
         failedItems.add(item);
       }

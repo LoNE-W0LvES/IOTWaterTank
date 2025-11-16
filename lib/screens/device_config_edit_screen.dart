@@ -5,6 +5,7 @@ import '../models/device_config_parameter.dart';
 import '../providers/device_provider.dart';
 import '../services/device_service.dart';
 import '../utils/api_exception.dart';
+import '../config/app_config.dart';
 
 /// Screen for editing device configuration parameters
 class DeviceConfigEditScreen extends StatefulWidget {
@@ -85,24 +86,24 @@ class _DeviceConfigEditScreenState extends State<DeviceConfigEditScreen> {
         changedConfig[key] = _modifiedConfig[key]!;
       }
 
-      // Print configuration being saved
-      print('=== SAVING DEVICE CONFIGURATION ===');
-      print('Device ID: ${widget.device.id}');
-      print('Device Name: ${widget.device.name}');
-      print('Changed Fields: ${_changedFields.length}');
-      print('');
+      // Log configuration being saved
+      AppConfig.configLog('=== SAVING DEVICE CONFIGURATION ===');
+      AppConfig.configLog('Device ID: ${widget.device.id}');
+      AppConfig.configLog('Device Name: ${widget.device.name}');
+      AppConfig.configLog('Changed Fields: ${_changedFields.length}');
+      AppConfig.configLog('');
       for (final entry in changedConfig.entries) {
-        print('${entry.key}:');
-        print('  Type: ${entry.value.type}');
-        print('  Old Value: ${_originalConfig[entry.key]?.value}');
-        print('  New Value: ${entry.value.value}');
-        print('  Timestamp: ${entry.value.lastModified}');
+        AppConfig.configLog('${entry.key}:');
+        AppConfig.configLog('  Type: ${entry.value.type}');
+        AppConfig.configLog('  Old Value: ${_originalConfig[entry.key]?.value}');
+        AppConfig.configLog('  New Value: ${entry.value.value}');
+        AppConfig.configLog('  Timestamp: ${entry.value.lastModified}');
         if (entry.value.options != null) {
-          print('  Options: ${entry.value.options}');
+          AppConfig.configLog('  Options: ${entry.value.options}');
         }
-        print('');
+        AppConfig.configLog('');
       }
-      print('===================================');
+      AppConfig.configLog('===================================');
 
       // Update device config (this will also set config_update = true)
       final updatedDevice = await _deviceService.updateDeviceConfig(
