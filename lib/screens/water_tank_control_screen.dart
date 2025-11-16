@@ -68,11 +68,11 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen> {
     final currInflow = device.telemetryData['currInflow']?.numberValue ?? 0.0;
     final pumpStatus = device.telemetryData['pumpStatus']?.numberValue ?? 0.0;
 
-    // Extract device config
-    final upperThreshold = device.deviceConfig['upperThreshold']?.value ?? 0.0;
-    final lowerThreshold = device.deviceConfig['lowerThreshold']?.value ?? 0.0;
-    final usedTotal = device.deviceConfig['UsedTotal']?.value ?? 0.0;
-    final maxInflow = device.deviceConfig['maxInflow']?.value ?? 0.0;
+    // Extract device config - convert to double to avoid type errors
+    final upperThreshold = _toDouble(device.deviceConfig['upperThreshold']?.value);
+    final lowerThreshold = _toDouble(device.deviceConfig['lowerThreshold']?.value);
+    final usedTotal = _toDouble(device.deviceConfig['UsedTotal']?.value);
+    final maxInflow = _toDouble(device.deviceConfig['maxInflow']?.value);
 
     // Extract control data
     final pumpSwitch = device.controlData['pumpSwitch']?.value ?? false;
@@ -499,5 +499,18 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen> {
         ],
       ),
     );
+  }
+
+  /// Helper method to safely convert dynamic values to double
+  double _toDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is num) return value.toDouble();
+    // Try to parse string
+    if (value is String) {
+      return double.tryParse(value) ?? 0.0;
+    }
+    return 0.0;
   }
 }
