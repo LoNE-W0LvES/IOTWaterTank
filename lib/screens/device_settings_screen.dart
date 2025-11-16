@@ -5,7 +5,7 @@ import '../models/device.dart';
 import '../providers/device_provider.dart';
 import '../services/device_service.dart';
 import '../utils/api_exception.dart';
-import 'device_control_screen.dart';
+import 'water_tank_control_screen.dart';
 import 'device_config_edit_screen.dart';
 
 /// Device Settings Screen for viewing device info and removing device
@@ -144,7 +144,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const DeviceControlScreen(),
+                  builder: (context) => const WaterTankControlScreen(),
                 ),
               );
             },
