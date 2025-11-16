@@ -194,6 +194,31 @@ class Device extends Equatable {
     }
   }
 
+  /// Get device online status from telemetry Status field
+  bool get isOnline {
+    final statusValue = telemetryData['Status']?.numberValue ?? 0.0;
+    return statusValue > 0;
+  }
+
+  /// Get status value (1 = online, 0 = offline)
+  int get statusValue {
+    final statusValue = telemetryData['Status']?.numberValue ?? 0.0;
+    return statusValue.toInt();
+  }
+
+  /// Get last seen text
+  String get lastSeenText {
+    if (lastSeen == null) return 'Never';
+
+    final now = DateTime.now();
+    final difference = now.difference(lastSeen!);
+
+    if (difference.inSeconds < 60) return '${difference.inSeconds}s ago';
+    if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
+    if (difference.inHours < 24) return '${difference.inHours}h ago';
+    return '${difference.inDays}d ago';
+  }
+
   /// Create a copy with updated fields
   Device copyWith({
     String? id,

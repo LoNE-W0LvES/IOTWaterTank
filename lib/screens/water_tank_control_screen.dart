@@ -183,7 +183,7 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
     // Extract control data
     final pumpSwitch = device.controlData['pumpSwitch']?.value ?? false; // Manual switch control
     final isPumpOn = pumpStatus > 0; // Actual pump status from telemetry
-    final isOnline = device.isActive;
+    final isOnline = device.isOnline; // Device online status from telemetry
 
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -286,57 +286,67 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
                       color: colorScheme.onSurface.withOpacity(0.7),
                     ),
               ),
+              if (device.lastSeen != null)
+                Text(
+                  'Last seen: ${device.lastSeenText}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurface.withOpacity(0.5),
+                        fontSize: 11,
+                      ),
+                ),
             ],
           ),
         ),
 
-        // LIVE Badge
-        if (isOnline)
-          AnimatedBuilder(
-            animation: _pulseAnimation,
-            builder: (context, child) {
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.2 + (_pulseAnimation.value * 0.2)),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Colors.green.withOpacity(_pulseAnimation.value),
-                    width: 2,
+        // Online/Offline Status Badge
+        AnimatedBuilder(
+          animation: _pulseAnimation,
+          builder: (context, child) {
+            final statusColor = device.isOnline ? Colors.green : Colors.red;
+            final statusText = device.isOnline ? 'ONLINE' : 'OFFLINE';
+
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.2 + (device.isOnline ? _pulseAnimation.value * 0.2 : 0)),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: statusColor.withOpacity(device.isOnline ? _pulseAnimation.value : 0.7),
+                  width: 2,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: statusColor,
+                      shape: BoxShape.circle,
+                      boxShadow: device.isOnline ? [
+                        BoxShadow(
+                          color: statusColor.withOpacity(_pulseAnimation.value),
+                          blurRadius: 8,
+                          spreadRadius: 2,
+                        ),
+                      ] : null,
+                    ),
                   ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.green.withOpacity(_pulseAnimation.value),
-                            blurRadius: 8,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
+                  const SizedBox(width: 6),
+                  Text(
+                    statusText,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'LIVE',
-                      style: TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
         const SizedBox(width: 8),
 
         // Theme Toggle
