@@ -7,6 +7,7 @@ import '../services/device_service.dart';
 import '../utils/api_exception.dart';
 import 'water_tank_control_screen.dart';
 import 'device_config_edit_screen.dart';
+import 'wifi_setup_screen.dart';
 
 /// Device Settings Screen for viewing device info and removing device
 class DeviceSettingsScreen extends StatefulWidget {
@@ -282,32 +283,57 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
               const SizedBox(height: 12),
 
               Card(
-                child: ListTile(
-                  leading: Icon(
-                    Icons.settings,
-                    color: colorScheme.primary,
-                  ),
-                  title: const Text('Device Configuration'),
-                  subtitle: Text(
-                    widget.device.deviceConfig.isEmpty
-                        ? 'No configuration available'
-                        : '${widget.device.deviceConfig.length} parameter(s)',
-                  ),
-                  trailing: widget.device.deviceConfig.isNotEmpty
-                      ? const Icon(Icons.arrow_forward_ios, size: 16)
-                      : null,
-                  onTap: widget.device.deviceConfig.isEmpty
-                      ? null
-                      : () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => DeviceConfigEditScreen(
-                                device: widget.device,
-                              ),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: Icon(
+                        Icons.settings,
+                        color: colorScheme.primary,
+                      ),
+                      title: const Text('Device Configuration'),
+                      subtitle: Text(
+                        widget.device.deviceConfig.isEmpty
+                            ? 'No configuration available'
+                            : '${widget.device.deviceConfig.length} parameter(s)',
+                      ),
+                      trailing: widget.device.deviceConfig.isNotEmpty
+                          ? const Icon(Icons.arrow_forward_ios, size: 16)
+                          : null,
+                      onTap: widget.device.deviceConfig.isEmpty
+                          ? null
+                          : () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => DeviceConfigEditScreen(
+                                    device: widget.device,
+                                  ),
+                                ),
+                              );
+                            },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: Icon(
+                        Icons.build,
+                        color: colorScheme.primary,
+                      ),
+                      title: const Text('Connection Configuration'),
+                      subtitle: const Text('WiFi and dashboard credentials'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => WiFiSetupScreen(
+                              deviceId: widget.device.deviceId,
+                              deviceName: widget.device.name,
                             ),
-                          );
-                        },
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
 
