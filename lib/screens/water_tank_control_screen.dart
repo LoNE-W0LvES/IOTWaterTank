@@ -394,13 +394,63 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
                 // Settings button
                 IconButton(
                   icon: const Icon(Icons.settings),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => DeviceConfigEditScreen(device: device),
+                  onPressed: () async {
+                    // Show loading dialog
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) => const Center(
+                        child: Card(
+                          child: Padding(
+                            padding: EdgeInsets.all(24.0),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CircularProgressIndicator(),
+                                SizedBox(height: 16),
+                                Text('Fetching device configuration...'),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                     );
+
+                    try {
+                      // Fetch fresh device data from server
+                      final deviceProvider = context.read<DeviceProvider>();
+                      await deviceProvider.selectDevice(device.id);
+
+                      // Close loading dialog
+                      if (mounted) Navigator.of(context).pop();
+
+                      // Get the updated device
+                      final updatedDevice = deviceProvider.selectedDevice;
+
+                      if (updatedDevice != null && mounted) {
+                        // Navigate to config screen with fresh data
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DeviceConfigEditScreen(device: updatedDevice),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      // Close loading dialog
+                      if (mounted) Navigator.of(context).pop();
+
+                      // Show error message
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to fetch device config: $e'),
+                            backgroundColor: Colors.red,
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                    }
                   },
                 ),
               ],
