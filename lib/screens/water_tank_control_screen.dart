@@ -13,6 +13,7 @@ import '../widgets/threshold_range_card.dart';
 import '../widgets/device_sidebar.dart';
 import '../config/app_config.dart';
 import 'device_config_edit_screen.dart';
+import 'device_settings_screen.dart';
 
 /// Redesigned Water Tank Control Screen with theme support
 class WaterTankControlScreen extends StatefulWidget {
@@ -263,22 +264,6 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
             tooltip: 'Device Management',
           ),
         ),
-        const SizedBox(width: 4),
-
-        // Logo
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: colorScheme.primary.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(
-            Icons.water_drop,
-            color: colorScheme.primary,
-            size: 28,
-          ),
-        ),
-        const SizedBox(width: 12),
 
         // Title and Device ID
         Expanded(
@@ -310,51 +295,62 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
           ),
         ),
 
-        // Online/Offline Status Badge
+        // Online/Offline Status Badge (Clickable)
         AnimatedBuilder(
           animation: _pulseAnimation,
           builder: (context, child) {
             final statusColor = device.isOnline ? Colors.green : Colors.red;
             final statusText = device.isOnline ? 'ONLINE' : 'OFFLINE';
 
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.2 + (device.isOnline ? _pulseAnimation.value * 0.2 : 0)),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: statusColor.withOpacity(device.isOnline ? _pulseAnimation.value : 0.7),
-                  width: 2,
+            return InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DeviceSettingsScreen(device: device),
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.2 + (device.isOnline ? _pulseAnimation.value * 0.2 : 0)),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: statusColor.withOpacity(device.isOnline ? _pulseAnimation.value : 0.7),
+                    width: 2,
+                  ),
                 ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: statusColor,
-                      shape: BoxShape.circle,
-                      boxShadow: device.isOnline ? [
-                        BoxShadow(
-                          color: statusColor.withOpacity(_pulseAnimation.value),
-                          blurRadius: 8,
-                          spreadRadius: 2,
-                        ),
-                      ] : null,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: statusColor,
+                        shape: BoxShape.circle,
+                        boxShadow: device.isOnline ? [
+                          BoxShadow(
+                            color: statusColor.withOpacity(_pulseAnimation.value),
+                            blurRadius: 8,
+                            spreadRadius: 2,
+                          ),
+                        ] : null,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    statusText,
-                    style: TextStyle(
-                      color: statusColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                    const SizedBox(width: 6),
+                    Text(
+                      statusText,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           },
