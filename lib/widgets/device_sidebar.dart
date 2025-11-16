@@ -3,8 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/device.dart';
 import '../providers/device_provider.dart';
 import '../screens/water_tank_control_screen.dart';
-import '../screens/device_config_edit_screen.dart';
-import '../screens/wifi_setup_screen.dart';
+import '../screens/device_settings_screen.dart';
 import '../screens/add_device_screen.dart';
 
 class DeviceSidebar extends StatefulWidget {
@@ -205,18 +204,7 @@ class _DeviceSidebarState extends State<DeviceSidebar> {
                             Navigator.of(context).pop(); // Close drawer
                             Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (context) => DeviceConfigEditScreen(device: device),
-                              ),
-                            );
-                          },
-                          onWiFiTap: () {
-                            Navigator.of(context).pop(); // Close drawer
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => WiFiSetupScreen(
-                                  deviceId: device.deviceId,
-                                  deviceName: device.name,
-                                ),
+                                builder: (context) => DeviceSettingsScreen(device: device),
                               ),
                             );
                           },
@@ -297,14 +285,12 @@ class DeviceCardSidebar extends StatelessWidget {
   final Device device;
   final VoidCallback onTap;
   final VoidCallback onSettingsTap;
-  final VoidCallback onWiFiTap;
 
   const DeviceCardSidebar({
     Key? key,
     required this.device,
     required this.onTap,
     required this.onSettingsTap,
-    required this.onWiFiTap,
   }) : super(key: key);
 
   /// Convert string color to Color object
@@ -387,46 +373,22 @@ class DeviceCardSidebar extends StatelessWidget {
 
               const SizedBox(width: 8),
 
-              // Action buttons
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Settings button
-                  Material(
-                    color: isDark ? const Color(0xFF374151) : const Color(0xFFF3F4F6),
-                    borderRadius: BorderRadius.circular(6),
-                    child: InkWell(
-                      onTap: onSettingsTap,
-                      borderRadius: BorderRadius.circular(6),
-                      child: Padding(
-                        padding: const EdgeInsets.all(6),
-                        child: Icon(
-                          Icons.settings,
-                          size: 18,
-                          color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
-                        ),
-                      ),
+              // Action button
+              Material(
+                color: isDark ? const Color(0xFF374151) : const Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.circular(6),
+                child: InkWell(
+                  onTap: onSettingsTap,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Icon(
+                      Icons.settings,
+                      size: 18,
+                      color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  // WiFi Setup button
-                  Material(
-                    color: theme.primaryColor.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(6),
-                    child: InkWell(
-                      onTap: onWiFiTap,
-                      borderRadius: BorderRadius.circular(6),
-                      child: Padding(
-                        padding: const EdgeInsets.all(7),
-                        child: Icon(
-                          Icons.build,
-                          size: 18,
-                          color: theme.primaryColor,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ],
           ),

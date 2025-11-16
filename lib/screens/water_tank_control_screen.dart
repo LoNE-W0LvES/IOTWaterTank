@@ -295,62 +295,51 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
           ),
         ),
 
-        // Online/Offline Status Badge (Clickable)
+        // Online/Offline Status Badge (Non-clickable)
         AnimatedBuilder(
           animation: _pulseAnimation,
           builder: (context, child) {
             final statusColor = device.isOnline ? Colors.green : Colors.red;
             final statusText = device.isOnline ? 'ONLINE' : 'OFFLINE';
 
-            return InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DeviceSettingsScreen(device: device),
-                  ),
-                );
-              },
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.2 + (device.isOnline ? _pulseAnimation.value * 0.2 : 0)),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: statusColor.withOpacity(device.isOnline ? _pulseAnimation.value : 0.7),
-                    width: 2,
-                  ),
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.2 + (device.isOnline ? _pulseAnimation.value * 0.2 : 0)),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: statusColor.withOpacity(device.isOnline ? _pulseAnimation.value : 0.7),
+                  width: 2,
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: statusColor,
-                        shape: BoxShape.circle,
-                        boxShadow: device.isOnline ? [
-                          BoxShadow(
-                            color: statusColor.withOpacity(_pulseAnimation.value),
-                            blurRadius: 8,
-                            spreadRadius: 2,
-                          ),
-                        ] : null,
-                      ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: statusColor,
+                      shape: BoxShape.circle,
+                      boxShadow: device.isOnline ? [
+                        BoxShadow(
+                          color: statusColor.withOpacity(_pulseAnimation.value),
+                          blurRadius: 8,
+                          spreadRadius: 2,
+                        ),
+                      ] : null,
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      statusText,
-                      style: TextStyle(
-                        color: statusColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    statusText,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             );
           },
@@ -364,57 +353,13 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
         // Settings Button
         IconButton(
           icon: const Icon(Icons.settings),
-          onPressed: () async {
-            // Fetch fresh config from server
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (context) => const Center(
-                child: Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text('Fetching device configuration...'),
-                      ],
-                    ),
-                  ),
-                ),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DeviceSettingsScreen(device: device),
               ),
             );
-
-            try {
-              final deviceProvider = context.read<DeviceProvider>();
-              await deviceProvider.selectDevice(device.id);
-
-              if (mounted) Navigator.of(context).pop();
-
-              final updatedDevice = deviceProvider.selectedDevice;
-
-              if (updatedDevice != null && mounted) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DeviceConfigEditScreen(device: updatedDevice),
-                  ),
-                );
-              }
-            } catch (e) {
-              if (mounted) Navigator.of(context).pop();
-
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Failed to fetch device config: $e'),
-                    backgroundColor: Colors.red,
-                    duration: const Duration(seconds: 3),
-                  ),
-                );
-              }
-            }
           },
         ),
       ],
