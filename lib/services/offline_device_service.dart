@@ -111,11 +111,13 @@ class OfflineDeviceService {
 
     // Try server
     try {
-      await _apiClient.patch('/devices/$deviceId/control', data: {
-        key: {
-          'type': type,
-          'value': value,
-          'lastModified': timestamp,
+      await _apiClient.patch('/devices/$deviceId', data: {
+        'controlData': {
+          key: {
+            'type': type,
+            'value': value,
+            'lastModified': timestamp,
+          }
         }
       });
 
@@ -270,11 +272,13 @@ class OfflineDeviceService {
 
         // Only sync if local change is newer (last-write-wins)
         if (serverTimestamp == null || localTimestamp > serverTimestamp) {
-          await _apiClient.patch('/devices/${item['deviceId']}/control', data: {
-            item['key']: {
-              'type': item['type'],
-              'value': item['value'],
-              'lastModified': localTimestamp,
+          await _apiClient.patch('/devices/${item['deviceId']}', data: {
+            'controlData': {
+              item['key']: {
+                'type': item['type'],
+                'value': item['value'],
+                'lastModified': localTimestamp,
+              }
             }
           });
 
