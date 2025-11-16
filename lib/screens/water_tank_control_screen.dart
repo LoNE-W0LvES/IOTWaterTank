@@ -202,7 +202,7 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
             upperThreshold: upperThreshold,
           ),
         ),
-        const SizedBox(height: 40),
+        const SizedBox(height: 24),
 
         // Threshold Range Card with animated bar indicator
         ThresholdRangeCard(
@@ -211,7 +211,7 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
           upperThreshold: upperThreshold,
           isDarkMode: isDarkMode,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
 
         // Water Used and Inflow side by side
         Row(
@@ -237,9 +237,9 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
             ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
 
-        // Large Circular Pump Control Button
+        // Pump Control Button
         _buildPumpControlButton(context, device, pumpSwitch, isDarkMode),
         const SizedBox(height: 20),
       ],
@@ -521,14 +521,14 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
                 }
               },
         child: Container(
-          width: 180,
-          height: 180,
+          width: double.infinity,
+          height: 70,
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
+            borderRadius: BorderRadius.circular(16),
             color: pumpSwitch ? colorScheme.primary : colorScheme.surface,
             border: Border.all(
               color: pumpSwitch ? colorScheme.primary : colorScheme.outline,
-              width: 4,
+              width: 3,
             ),
             boxShadow: pumpSwitch && isDarkMode
                 ? [
@@ -546,19 +546,20 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
                     color: pumpSwitch ? Colors.black : colorScheme.primary,
                   ),
                 )
-              : Column(
+              : Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
                       pumpSwitch ? Icons.power_settings_new : Icons.power_off,
-                      size: 60,
+                      size: 32,
                       color: pumpSwitch ? Colors.black : colorScheme.primary,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(width: 16),
                     Text(
                       pumpSwitch ? 'PUMP ON' : 'PUMP OFF',
                       style: TextTheme().titleLarge?.copyWith(
                             fontWeight: FontWeight.bold,
+                            fontSize: 20,
                             color: pumpSwitch ? Colors.black : colorScheme.onSurface,
                           ),
                     ),
