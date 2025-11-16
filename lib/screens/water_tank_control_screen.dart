@@ -196,6 +196,9 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
             percentage: waterLevel,
             size: 280,
             isDarkMode: isDarkMode,
+            isPumpOn: pumpSwitch,
+            lowerThreshold: lowerThreshold,
+            upperThreshold: upperThreshold,
           ),
         ),
         const SizedBox(height: 40),
@@ -235,28 +238,13 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
         ),
         const SizedBox(height: 12),
 
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricCard(
-                context,
-                'Inflow',
-                '${currInflow.toStringAsFixed(1)} L/min',
-                Icons.water,
-                isDarkMode,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildMetricCard(
-                context,
-                'Max Inflow',
-                '${maxInflow.toStringAsFixed(1)} L/min',
-                Icons.water_damage,
-                isDarkMode,
-              ),
-            ),
-          ],
+        // Inflow card (full width)
+        _buildMetricCard(
+          context,
+          'Inflow',
+          '${currInflow.toStringAsFixed(1)} L/min',
+          Icons.water,
+          isDarkMode,
         ),
         const SizedBox(height: 40),
 

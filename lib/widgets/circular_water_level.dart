@@ -7,12 +7,18 @@ class CircularWaterLevel extends StatefulWidget {
   final double percentage; // 0.0 to 100.0
   final double size;
   final bool isDarkMode;
+  final bool isPumpOn;
+  final double lowerThreshold;
+  final double upperThreshold;
 
   const CircularWaterLevel({
     Key? key,
     required this.percentage,
     this.size = 280,
     required this.isDarkMode,
+    required this.isPumpOn,
+    required this.lowerThreshold,
+    required this.upperThreshold,
   }) : super(key: key);
 
   @override
@@ -43,23 +49,55 @@ class _CircularWaterLevelState extends State<CircularWaterLevel>
     super.dispose();
   }
 
+  /// Calculate water level color based on pump status and water level
+  Color _getWaterLevelColor(double percentage) {
+    // If pump is ON, always return green
+    if (widget.isPumpOn) {
+      return Colors.green;
+    }
+
+    // If pump is OFF, gradient from red (low) to blue (high)
+    // Calculate position between lower and upper thresholds
+    final lower = widget.lowerThreshold;
+    final upper = widget.upperThreshold;
+
+    // If below lower threshold, return red
+    if (percentage <= lower) {
+      return Colors.red;
+    }
+
+    // If above upper threshold, return blue
+    if (percentage >= upper) {
+      return Colors.blue;
+    }
+
+    // Between thresholds: interpolate from red to blue
+    final range = upper - lower;
+    final position = (percentage - lower) / range; // 0.0 to 1.0
+
+    // Interpolate between red and blue
+    return Color.lerp(Colors.red, Colors.blue, position)!;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
+    // Clamp percentage between 0 and 100
+    final displayPercentage = widget.percentage.clamp(0.0, 100.0);
+    final waterLevel = displayPercentage / 100.0;
+
+    // Dynamic color based on pump status and water level
+    final primaryColor = _getWaterLevelColor(displayPercentage);
+
     // Theme-aware colors
-    final primaryColor = colorScheme.primary;
     final surfaceColor = widget.isDarkMode
         ? const Color(0xFF1F2937) // dark gray-800
         : const Color(0xFFF9FAFB); // light gray-50
     final borderColor = widget.isDarkMode
         ? const Color(0xFF374151) // dark gray-700
         : const Color(0xFFE5E7EB); // light gray-200
-
-    // Clamp percentage between 0 and 100
-    final displayPercentage = widget.percentage.clamp(0.0, 100.0);
-    final waterLevel = displayPercentage / 100.0;
 
     // Add extra space for glow effect (blurRadius + spreadRadius needs room)
     final containerSize = widget.size + 100; // Extra 100px for full glow visibility
