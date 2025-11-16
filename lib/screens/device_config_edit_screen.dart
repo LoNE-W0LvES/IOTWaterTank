@@ -85,6 +85,25 @@ class _DeviceConfigEditScreenState extends State<DeviceConfigEditScreen> {
         changedConfig[key] = _modifiedConfig[key]!;
       }
 
+      // Print configuration being saved
+      print('=== SAVING DEVICE CONFIGURATION ===');
+      print('Device ID: ${widget.device.id}');
+      print('Device Name: ${widget.device.name}');
+      print('Changed Fields: ${_changedFields.length}');
+      print('');
+      for (final entry in changedConfig.entries) {
+        print('${entry.key}:');
+        print('  Type: ${entry.value.type}');
+        print('  Old Value: ${_originalConfig[entry.key]?.value}');
+        print('  New Value: ${entry.value.value}');
+        print('  Timestamp: ${entry.value.lastModified}');
+        if (entry.value.options != null) {
+          print('  Options: ${entry.value.options}');
+        }
+        print('');
+      }
+      print('===================================');
+
       // Update device config (this will also set config_update = true)
       final updatedDevice = await _deviceService.updateDeviceConfig(
         widget.device.id,
@@ -548,6 +567,58 @@ class _DeviceConfigEditScreenState extends State<DeviceConfigEditScreen> {
               _updateField(key, numValue);
             }
           },
+        );
+
+      case 'dropdown':
+        final options = param.options ?? [];
+        final currentValue = param.stringValue;
+
+        if (options.isEmpty) {
+          return Text(
+            'No options available',
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Segmented buttons for dropdown options
+            Row(
+              children: options.map((option) {
+                final isSelected = option == currentValue;
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: OutlinedButton(
+                      onPressed: () => _updateField(key, option),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: isSelected
+                            ? Theme.of(context).colorScheme.primaryContainer
+                            : null,
+                        foregroundColor: isSelected
+                            ? Theme.of(context).colorScheme.onPrimaryContainer
+                            : Theme.of(context).colorScheme.onSurface,
+                        side: BorderSide(
+                          color: isSelected
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.outline,
+                          width: isSelected ? 2 : 1,
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: Text(
+                        option,
+                        style: TextStyle(
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
         );
 
       case 'string':

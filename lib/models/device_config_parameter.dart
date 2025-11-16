@@ -4,11 +4,13 @@ import 'package:equatable/equatable.dart';
 class DeviceConfigParameter extends Equatable {
   final String key;
   final String label;
-  final String type; // 'string', 'number', 'boolean'
+  final String type; // 'string', 'number', 'boolean', 'dropdown'
   final dynamic value;
   final dynamic defaultValue;
   final int? lastModified; // Unix timestamp in milliseconds
   final bool system; // True for system flags like config_update
+  final List<String>? options; // Options for dropdown type
+  final String? description; // Optional description
 
   const DeviceConfigParameter({
     required this.key,
@@ -18,6 +20,8 @@ class DeviceConfigParameter extends Equatable {
     required this.defaultValue,
     this.lastModified,
     this.system = false,
+    this.options,
+    this.description,
   });
 
   /// Create from JSON
@@ -44,6 +48,12 @@ class DeviceConfigParameter extends Equatable {
       }
     }
 
+    // Parse options for dropdown type
+    List<String>? options;
+    if (json['options'] != null && json['options'] is List) {
+      options = (json['options'] as List).map((e) => e.toString()).toList();
+    }
+
     return DeviceConfigParameter(
       key: key,
       label: json['label'] as String? ?? key,
@@ -52,6 +62,8 @@ class DeviceConfigParameter extends Equatable {
       defaultValue: json['defaultValue'],
       lastModified: lastModified,
       system: json['system'] as bool? ?? false,
+      options: options,
+      description: json['description'] as String?,
     );
   }
 
@@ -65,6 +77,8 @@ class DeviceConfigParameter extends Equatable {
       'defaultValue': defaultValue,
       if (lastModified != null) 'lastModified': lastModified,
       if (system) 'system': system,
+      if (options != null) 'options': options,
+      if (description != null) 'description': description,
     };
   }
 
@@ -77,6 +91,8 @@ class DeviceConfigParameter extends Equatable {
     dynamic defaultValue,
     int? lastModified,
     bool? system,
+    List<String>? options,
+    String? description,
   }) {
     return DeviceConfigParameter(
       key: key ?? this.key,
@@ -86,6 +102,8 @@ class DeviceConfigParameter extends Equatable {
       defaultValue: defaultValue ?? this.defaultValue,
       lastModified: lastModified ?? this.lastModified,
       system: system ?? this.system,
+      options: options ?? this.options,
+      description: description ?? this.description,
     );
   }
 
@@ -111,7 +129,7 @@ class DeviceConfigParameter extends Equatable {
   String get stringValue => value?.toString() ?? '';
 
   @override
-  List<Object?> get props => [key, label, type, value, defaultValue, lastModified, system];
+  List<Object?> get props => [key, label, type, value, defaultValue, lastModified, system, options, description];
 
   @override
   String toString() =>
