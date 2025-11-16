@@ -1,0 +1,434 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../models/device.dart';
+import '../providers/device_provider.dart';
+import '../screens/water_tank_control_screen.dart';
+import '../screens/device_config_edit_screen.dart';
+import '../screens/wifi_setup_screen.dart';
+import '../screens/add_device_screen.dart';
+
+class DeviceSidebar extends StatefulWidget {
+  const DeviceSidebar({Key? key}) : super(key: key);
+
+  @override
+  State<DeviceSidebar> createState() => _DeviceSidebarState();
+}
+
+class _DeviceSidebarState extends State<DeviceSidebar> {
+  String _searchQuery = '';
+  String _sortBy = 'name'; // name, status, lastSeen
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Drawer(
+      backgroundColor: isDark ? const Color(0xFF111827) : Colors.white,
+      child: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1F2937) : const Color(0xFFF3F4F6),
+                border: Border(
+                  bottom: BorderSide(
+                    color: isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB),
+                  ),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.water_drop,
+                        color: theme.primaryColor,
+                        size: 32,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'My Devices',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // Search bar
+                  TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Search devices...',
+                      prefixIcon: const Icon(Icons.search, size: 20),
+                      filled: true,
+                      fillColor: isDark ? const Color(0xFF111827) : Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB),
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      isDense: true,
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value.toLowerCase();
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  // Sort dropdown
+                  Row(
+                    children: [
+                      Text(
+                        'Sort by:',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: DropdownButton<String>(
+                          value: _sortBy,
+                          isExpanded: true,
+                          underline: const SizedBox(),
+                          items: const [
+                            DropdownMenuItem(value: 'name', child: Text('Name')),
+                            DropdownMenuItem(value: 'status', child: Text('Status')),
+                            DropdownMenuItem(value: 'lastSeen', child: Text('Last Seen')),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              _sortBy = value ?? 'name';
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Device list
+            Expanded(
+              child: Consumer<DeviceProvider>(
+                builder: (context, deviceProvider, child) {
+                  if (deviceProvider.isLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (deviceProvider.error != null) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                            const SizedBox(height: 16),
+                            Text(
+                              deviceProvider.error!,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.red),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () => deviceProvider.fetchDevices(),
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  final devices = _getFilteredAndSortedDevices(deviceProvider.devices);
+
+                  if (devices.isEmpty) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.devices_other,
+                              size: 64,
+                              color: isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _searchQuery.isEmpty
+                                  ? 'No devices found'
+                                  : 'No devices match your search',
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return RefreshIndicator(
+                    onRefresh: () => deviceProvider.fetchDevices(),
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(8),
+                      itemCount: devices.length,
+                      itemBuilder: (context, index) {
+                        final device = devices[index];
+                        return DeviceCardSidebar(
+                          device: device,
+                          onTap: () {
+                            deviceProvider.selectDevice(device);
+                            Navigator.of(context).pop(); // Close drawer
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => WaterTankControlScreen(device: device),
+                              ),
+                            );
+                          },
+                          onSettingsTap: () {
+                            Navigator.of(context).pop(); // Close drawer
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => DeviceConfigEditScreen(device: device),
+                              ),
+                            );
+                          },
+                          onWiFiTap: () {
+                            Navigator.of(context).pop(); // Close drawer
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => WiFiSetupScreen(
+                                  deviceId: device.deviceId,
+                                  deviceName: device.name,
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            // Add device button
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1F2937) : const Color(0xFFF3F4F6),
+                border: Border(
+                  top: BorderSide(
+                    color: isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB),
+                  ),
+                ),
+              ),
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop(); // Close drawer
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const AddDeviceScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('Add New Device'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 48),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Device> _getFilteredAndSortedDevices(List<Device> devices) {
+    // Filter by search query
+    var filtered = devices.where((device) {
+      if (_searchQuery.isEmpty) return true;
+      return device.name.toLowerCase().contains(_searchQuery) ||
+          device.deviceId.toLowerCase().contains(_searchQuery);
+    }).toList();
+
+    // Sort devices
+    switch (_sortBy) {
+      case 'status':
+        filtered.sort((a, b) {
+          if (a.isOnline && !b.isOnline) return -1;
+          if (!a.isOnline && b.isOnline) return 1;
+          return a.name.compareTo(b.name);
+        });
+        break;
+      case 'lastSeen':
+        filtered.sort((a, b) {
+          final aTime = a.lastSeen ?? DateTime(1970);
+          final bTime = b.lastSeen ?? DateTime(1970);
+          return bTime.compareTo(aTime);
+        });
+        break;
+      default: // name
+        filtered.sort((a, b) => a.name.compareTo(b.name));
+    }
+
+    return filtered;
+  }
+}
+
+class DeviceCardSidebar extends StatelessWidget {
+  final Device device;
+  final VoidCallback onTap;
+  final VoidCallback onSettingsTap;
+  final VoidCallback onWiFiTap;
+
+  const DeviceCardSidebar({
+    Key? key,
+    required this.device,
+    required this.onTap,
+    required this.onSettingsTap,
+    required this.onWiFiTap,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1F2937) : Colors.white,
+        border: Border.all(
+          color: isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB),
+        ),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Device name and status indicator
+              Row(
+                children: [
+                  // Online/Offline indicator
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: device.isOnline
+                          ? const Color(0xFF10B981) // Green-500
+                          : const Color(0xFF6B7280), // Gray-500
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      device.name,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white : const Color(0xFF111827),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              // Device ID
+              Text(
+                device.deviceId,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Status and last seen
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: device.getStatusColor().withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      device.getStatusText(),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: device.getStatusColor(),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      device.lastSeenText,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Action buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  // Settings button
+                  IconButton(
+                    icon: const Icon(Icons.settings, size: 20),
+                    onPressed: onSettingsTap,
+                    tooltip: 'Device Configuration',
+                    style: IconButton.styleFrom(
+                      backgroundColor: isDark
+                          ? const Color(0xFF374151)
+                          : const Color(0xFFF3F4F6),
+                      padding: const EdgeInsets.all(8),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // WiFi button
+                  IconButton(
+                    icon: const Icon(Icons.wifi, size: 20),
+                    onPressed: onWiFiTap,
+                    tooltip: 'WiFi Setup',
+                    style: IconButton.styleFrom(
+                      backgroundColor: theme.primaryColor.withOpacity(0.1),
+                      foregroundColor: theme.primaryColor,
+                      padding: const EdgeInsets.all(8),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

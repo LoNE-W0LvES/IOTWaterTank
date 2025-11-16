@@ -5,6 +5,7 @@ import '../providers/device_provider.dart';
 import '../widgets/loading_widget.dart';
 import '../widgets/error_widget.dart';
 import '../widgets/device_card.dart';
+import '../widgets/device_sidebar.dart';
 import 'water_tank_control_screen.dart';
 import 'add_device_screen.dart';
 import '../config/app_config.dart';
@@ -126,6 +127,13 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Devices'),
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+            tooltip: 'Device Management',
+          ),
+        ),
         actions: [
           // Only show filter button if no project is hardcoded in config
           if (AppConfig.projectId == null)
@@ -146,6 +154,7 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
           ),
         ],
       ),
+      drawer: const DeviceSidebar(),
       body: Consumer<DeviceProvider>(
         builder: (context, deviceProvider, child) {
           // Loading state
