@@ -27,19 +27,20 @@ class OfflineDeviceService {
     ));
   }
 
-  /// Get device data with offline support
+  /// Get full device data including config (use for settings)
   /// Tries local IP first, then falls back to server
   Future<Device> getDevice(String deviceId, {String? localIp}) async {
     // Try local connection first if IP is available
     if (localIp != null && localIp.isNotEmpty) {
       try {
-        AppConfig.offlineLog('Attempting to fetch device from local IP: $localIp');
+        AppConfig.offlineLog('Attempting to fetch full device from local IP: $localIp');
         final localDevice = await _getDeviceFromLocal(deviceId, localIp);
 
-        // Cache the data locally
+        // Cache the full data locally
         await _cacheDeviceData(deviceId, localDevice);
+        await _cacheDeviceConfig(deviceId, localDevice.deviceConfig);
 
-        AppConfig.offlineLog('Successfully fetched device from local IP');
+        AppConfig.offlineLog('Successfully fetched full device from local IP');
         return localDevice;
       } catch (e) {
         AppConfig.offlineLog('Local connection failed: $e');
@@ -52,15 +53,70 @@ class OfflineDeviceService {
       final response = await _apiClient.get('/api/devices/$deviceId');
       final device = Device.fromJson(response.data);
 
-      // Cache the data locally
+      // Cache the full data locally
       await _cacheDeviceData(deviceId, device);
+      await _cacheDeviceConfig(deviceId, device.deviceConfig);
 
       return device;
     } catch (e) {
       // Try to return cached data if available
       final cachedDevice = await _getCachedDeviceData(deviceId);
       if (cachedDevice != null) {
-        AppConfig.offlineLog('Using cached device data (offline mode)');
+        AppConfig.offlineLog('Using cached full device data (offline mode)');
+        return cachedDevice;
+      }
+
+      throw ApiException(message: 'Failed to fetch device data');
+    }
+  }
+
+  /// Get device live data (telemetry + control only, use cached config)
+  /// This is more efficient for regular dashboard updates
+  Future<Device> getDeviceLiveData(String deviceId, {String? localIp}) async {
+    // Get cached config first
+    final cachedConfig = await _getCachedDeviceConfig(deviceId);
+
+    // Try local connection first if IP is available
+    if (localIp != null && localIp.isNotEmpty) {
+      try {
+        AppConfig.offlineLog('Attempting to fetch live data from local IP: $localIp');
+        final localDevice = await _getDeviceFromLocal(deviceId, localIp);
+
+        // Merge with cached config if available
+        final mergedDevice = cachedConfig != null
+            ? localDevice.copyWith(deviceConfig: cachedConfig)
+            : localDevice;
+
+        // Cache the live data
+        await _cacheDeviceData(deviceId, mergedDevice);
+
+        AppConfig.offlineLog('Successfully fetched live data from local IP');
+        return mergedDevice;
+      } catch (e) {
+        AppConfig.offlineLog('Local connection failed: $e');
+        AppConfig.offlineLog('Falling back to server...');
+      }
+    }
+
+    // Fall back to server
+    try {
+      final response = await _apiClient.get('/api/devices/$deviceId');
+      final device = Device.fromJson(response.data);
+
+      // Use cached config if available to avoid overwriting
+      final mergedDevice = cachedConfig != null
+          ? device.copyWith(deviceConfig: cachedConfig)
+          : device;
+
+      // Cache the live data
+      await _cacheDeviceData(deviceId, mergedDevice);
+
+      return mergedDevice;
+    } catch (e) {
+      // Try to return cached data if available
+      final cachedDevice = await _getCachedDeviceData(deviceId);
+      if (cachedDevice != null) {
+        AppConfig.offlineLog('Using cached live data (offline mode)');
         return cachedDevice;
       }
 
@@ -179,6 +235,42 @@ class OfflineDeviceService {
         return Device.fromJson(json);
       } catch (e) {
         AppConfig.errorLog('Error parsing cached device data', error: e);
+        return null;
+      }
+    }
+
+    return null;
+  }
+
+  /// Cache device config separately (for use with live data updates)
+  Future<void> _cacheDeviceConfig(String deviceId, Map<String, DeviceConfigParameter> config) async {
+    final prefs = await SharedPreferences.getInstance();
+    final cacheKey = 'device_config_$deviceId';
+    final configJson = config.map((key, value) => MapEntry(key, value.toJson()));
+    final jsonString = jsonEncode(configJson);
+    await prefs.setString(cacheKey, jsonString);
+    AppConfig.offlineLog('Cached device config for $deviceId');
+  }
+
+  /// Get cached device config
+  Future<Map<String, DeviceConfigParameter>?> _getCachedDeviceConfig(String deviceId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final cacheKey = 'device_config_$deviceId';
+    final jsonString = prefs.getString(cacheKey);
+
+    if (jsonString != null) {
+      try {
+        final json = jsonDecode(jsonString) as Map<String, dynamic>;
+        final Map<String, DeviceConfigParameter> config = {};
+        json.forEach((key, value) {
+          if (value is Map<String, dynamic>) {
+            config[key] = DeviceConfigParameter.fromJson(key, value);
+          }
+        });
+        AppConfig.offlineLog('Using cached device config for $deviceId');
+        return config;
+      } catch (e) {
+        AppConfig.errorLog('Error parsing cached device config', error: e);
         return null;
       }
     }

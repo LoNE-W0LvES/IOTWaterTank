@@ -61,7 +61,8 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
           final localIp = deviceProvider.selectedDevice!.deviceConfig['ip_address']?.value;
           final deviceId = deviceProvider.selectedDevice!.id;
 
-          final device = await offlineProvider.service.getDevice(
+          // Use getDeviceLiveData for efficient updates (telemetry + control only)
+          final device = await offlineProvider.service.getDeviceLiveData(
             deviceId,
             localIp: localIp?.toString(),
           );

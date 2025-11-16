@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
 import '../models/device.dart';
 import '../models/control_data.dart';
@@ -87,7 +89,12 @@ class DeviceService {
           );
         }
 
-        return Device.fromJson(deviceData);
+        final device = Device.fromJson(deviceData);
+
+        // Cache device config for offline use
+        await _cacheDeviceConfig(deviceId, device.deviceConfig);
+
+        return device;
       }
 
       throw ApiException(
@@ -296,6 +303,20 @@ class DeviceService {
     } catch (e) {
       if (e is ApiException) rethrow;
       throw ApiException.fromError(e);
+    }
+  }
+
+  /// Cache device config for offline use
+  Future<void> _cacheDeviceConfig(String deviceId, Map<String, DeviceConfigParameter> config) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cacheKey = 'device_config_$deviceId';
+      final configJson = config.map((key, value) => MapEntry(key, value.toJson()));
+      final jsonString = jsonEncode(configJson);
+      await prefs.setString(cacheKey, jsonString);
+      AppConfig.offlineLog('Cached device config for $deviceId');
+    } catch (e) {
+      AppConfig.errorLog('Failed to cache device config', error: e);
     }
   }
 }
