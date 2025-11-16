@@ -31,6 +31,7 @@ class _DeviceConfigEditScreenState extends State<DeviceConfigEditScreen> {
   final Set<String> _changedFields = {};
 
   bool _isSaving = false;
+  bool _isRemoving = false;
 
   @override
   void initState() {
@@ -131,6 +132,92 @@ class _DeviceConfigEditScreenState extends State<DeviceConfigEditScreen> {
       });
 
       if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('An unexpected error occurred. Please try again.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  /// Handle device removal
+  Future<void> _handleRemoveDevice() async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Device?'),
+        content: Text(
+          'Are you sure you want to remove ${widget.device.name} from your account? '
+          'You will need the Device ID to add it again.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _isRemoving = true;
+    });
+
+    try {
+      final result = await _deviceService.unclaimDevice(widget.device.deviceId);
+
+      if (!mounted) return;
+
+      // Show success message
+      final message = result['message'] ?? 'Device removed successfully';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+
+      // Refresh device list
+      await context.read<DeviceProvider>().refreshDevices();
+
+      // Navigate back to device list (pop all routes)
+      if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    } on ApiException catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isRemoving = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isRemoving = false;
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -244,25 +331,108 @@ class _DeviceConfigEditScreenState extends State<DeviceConfigEditScreen> {
                     return _buildConfigField(entry.key, entry.value);
                   }),
 
+                const SizedBox(height: 32),
+
+                // Danger Zone Section
+                Text(
+                  'DANGER ZONE',
+                  style: textTheme.titleSmall?.copyWith(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: Colors.red.withOpacity(0.5),
+                      width: 1,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.warning_outlined,
+                              color: Colors.red,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Remove Device',
+                              style: textTheme.titleMedium?.copyWith(
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Remove this device from your account. This action cannot be undone.',
+                          style: textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        OutlinedButton.icon(
+                          onPressed: _isRemoving ? null : _handleRemoveDevice,
+                          icon: _isRemoving
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.delete_outline),
+                          label: Text(
+                            _isRemoving ? 'Removing...' : 'Remove Device',
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(color: Colors.red),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
                 const SizedBox(height: 80), // Space for FAB
               ],
             ),
           ),
 
           // Full screen loading overlay
-          if (_isSaving)
+          if (_isSaving || _isRemoving)
             Container(
               color: Colors.black.withOpacity(0.5),
-              child: const Center(
+              child: Center(
                 child: Card(
                   child: Padding(
-                    padding: EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(24),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text('Saving configuration...'),
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 16),
+                        Text(_isSaving
+                          ? 'Saving configuration...'
+                          : 'Removing device...'),
                       ],
                     ),
                   ),

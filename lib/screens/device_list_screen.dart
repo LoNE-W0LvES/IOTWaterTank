@@ -5,8 +5,7 @@ import '../providers/device_provider.dart';
 import '../widgets/loading_widget.dart';
 import '../widgets/error_widget.dart';
 import '../widgets/device_card.dart';
-import 'device_control_screen.dart';
-import 'device_settings_screen.dart';
+import 'water_tank_control_screen.dart';
 import 'add_device_screen.dart';
 import '../config/app_config.dart';
 
@@ -243,12 +242,12 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
                       return DeviceCard(
                         device: device,
                         onTap: () {
+                          // Set the selected device before navigating
+                          deviceProvider.setSelectedDevice(device);
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => DeviceSettingsScreen(
-                                device: device,
-                              ),
+                              builder: (context) => const WaterTankControlScreen(),
                             ),
                           );
                         },
