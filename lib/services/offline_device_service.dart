@@ -49,7 +49,7 @@ class OfflineDeviceService {
 
     // Fall back to server
     try {
-      final response = await _apiClient.get('/devices/$deviceId');
+      final response = await _apiClient.get('/api/devices/$deviceId');
       final device = Device.fromJson(response.data);
 
       // Cache the data locally
@@ -111,7 +111,7 @@ class OfflineDeviceService {
 
     // Try server
     try {
-      await _apiClient.patch('/devices/$deviceId', data: {
+      await _apiClient.patch('/api/devices/$deviceId', data: {
         'controlData': {
           key: {
             'type': type,
@@ -263,7 +263,7 @@ class OfflineDeviceService {
     for (final item in queue) {
       try {
         // Fetch current server data to compare timestamps
-        final serverDevice = await _apiClient.get('/devices/${item['deviceId']}');
+        final serverDevice = await _apiClient.get('/api/devices/${item['deviceId']}');
         final serverControlData = serverDevice.data['controlData'] ?? {};
         final serverControl = serverControlData[item['key']];
 
@@ -272,7 +272,7 @@ class OfflineDeviceService {
 
         // Only sync if local change is newer (last-write-wins)
         if (serverTimestamp == null || localTimestamp > serverTimestamp) {
-          await _apiClient.patch('/devices/${item['deviceId']}', data: {
+          await _apiClient.patch('/api/devices/${item['deviceId']}', data: {
             'controlData': {
               item['key']: {
                 'type': item['type'],
