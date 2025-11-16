@@ -328,7 +328,7 @@ class DeviceCardSidebar extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1F2937) : Colors.white,
         border: Border.all(
@@ -340,102 +340,90 @@ class DeviceCardSidebar extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.all(10),
+          child: Row(
             children: [
-              // Device name and status indicator
-              Row(
-                children: [
-                  // Online/Offline indicator
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: device.isOnline
-                          ? const Color(0xFF10B981) // Green-500
-                          : const Color(0xFF6B7280), // Gray-500
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
+              // Online/Offline indicator
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: device.isOnline
+                      ? const Color(0xFF10B981) // Green-500
+                      : const Color(0xFF6B7280), // Gray-500
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 10),
+
+              // Device info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
                       device.name,
-                      style: theme.textTheme.bodyLarge?.copyWith(
+                      style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: isDark ? Colors.white : const Color(0xFF111827),
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              // Device ID
-              Text(
-                device.deviceId,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
-                ),
-              ),
-              const SizedBox(height: 8),
-              // Status and last seen
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _getColorFromString(device.getStatusColor()).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      device.getStatusText(),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: _getColorFromString(device.getStatusColor()),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      device.lastSeenText,
+                    const SizedBox(height: 2),
+                    Text(
+                      '${device.deviceId} • ${device.lastSeenText}',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
                         fontSize: 11,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 12),
+
+              const SizedBox(width: 8),
+
               // Action buttons
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   // Settings button
-                  IconButton(
-                    icon: const Icon(Icons.settings, size: 20),
-                    onPressed: onSettingsTap,
-                    tooltip: 'Device Configuration',
-                    style: IconButton.styleFrom(
-                      backgroundColor: isDark
-                          ? const Color(0xFF374151)
-                          : const Color(0xFFF3F4F6),
-                      padding: const EdgeInsets.all(8),
+                  Material(
+                    color: isDark ? const Color(0xFF374151) : const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(6),
+                    child: InkWell(
+                      onTap: onSettingsTap,
+                      borderRadius: BorderRadius.circular(6),
+                      child: Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: Icon(
+                          Icons.settings,
+                          size: 18,
+                          color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   // WiFi button
-                  IconButton(
-                    icon: const Icon(Icons.wifi, size: 20),
-                    onPressed: onWiFiTap,
-                    tooltip: 'WiFi Setup',
-                    style: IconButton.styleFrom(
-                      backgroundColor: theme.primaryColor.withOpacity(0.1),
-                      foregroundColor: theme.primaryColor,
-                      padding: const EdgeInsets.all(8),
+                  Material(
+                    color: theme.primaryColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(6),
+                    child: InkWell(
+                      onTap: onWiFiTap,
+                      borderRadius: BorderRadius.circular(6),
+                      child: Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: Icon(
+                          Icons.wifi,
+                          size: 18,
+                          color: theme.primaryColor,
+                        ),
+                      ),
                     ),
                   ),
                 ],

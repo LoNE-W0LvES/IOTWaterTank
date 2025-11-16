@@ -10,6 +10,7 @@ import '../widgets/error_widget.dart';
 import '../widgets/circular_water_level.dart';
 import '../widgets/theme_toggle.dart';
 import '../widgets/threshold_range_card.dart';
+import '../widgets/device_sidebar.dart';
 import '../config/app_config.dart';
 import 'device_config_edit_screen.dart';
 
@@ -94,6 +95,7 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
     final isDarkMode = themeProvider.isDarkMode;
 
     return Scaffold(
+      drawer: const DeviceSidebar(),
       body: Container(
         decoration: _buildGradientBackground(isDarkMode),
         child: SafeArea(
@@ -253,6 +255,16 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
 
     return Row(
       children: [
+        // Menu button to open drawer
+        Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+            tooltip: 'Device Management',
+          ),
+        ),
+        const SizedBox(width: 4),
+
         // Logo
         Container(
           padding: const EdgeInsets.all(10),
