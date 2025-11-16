@@ -12,7 +12,7 @@ class OfflineProvider extends ChangeNotifier {
   bool _isSyncing = false;
   int _pendingChanges = 0;
   SyncResult? _lastSyncResult;
-  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  StreamSubscription<ConnectivityResult>? _connectivitySubscription;
 
   bool get isOnline => _isOnline;
   bool get isSyncing => _isSyncing;
@@ -25,8 +25,8 @@ class OfflineProvider extends ChangeNotifier {
     await _updatePendingChanges();
 
     // Listen for connectivity changes
-    _connectivitySubscription = _connectivity.onConnectivityChanged.listen((results) {
-      _handleConnectivityChange(results);
+    _connectivitySubscription = _connectivity.onConnectivityChanged.listen((result) {
+      _handleConnectivityChange(result);
     });
   }
 
@@ -37,16 +37,16 @@ class OfflineProvider extends ChangeNotifier {
   }
 
   Future<void> _checkConnectivity() async {
-    final results = await _connectivity.checkConnectivity();
-    _isOnline = results.contains(ConnectivityResult.wifi) ||
-                results.contains(ConnectivityResult.mobile);
+    final result = await _connectivity.checkConnectivity();
+    _isOnline = result == ConnectivityResult.wifi ||
+                result == ConnectivityResult.mobile;
     notifyListeners();
   }
 
-  void _handleConnectivityChange(List<ConnectivityResult> results) async {
+  void _handleConnectivityChange(ConnectivityResult result) async {
     final wasOnline = _isOnline;
-    _isOnline = results.contains(ConnectivityResult.wifi) ||
-                results.contains(ConnectivityResult.mobile);
+    _isOnline = result == ConnectivityResult.wifi ||
+                result == ConnectivityResult.mobile;
 
     notifyListeners();
 

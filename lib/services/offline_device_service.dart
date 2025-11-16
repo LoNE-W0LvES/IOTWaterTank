@@ -63,7 +63,7 @@ class OfflineDeviceService {
         return cachedDevice;
       }
 
-      throw ApiException('Failed to fetch device data');
+      throw ApiException(message: 'Failed to fetch device data');
     }
   }
 
@@ -77,7 +77,7 @@ class OfflineDeviceService {
     if (response.statusCode == 200) {
       return Device.fromJson(response.data);
     } else {
-      throw ApiException('Local device returned status ${response.statusCode}');
+      throw ApiException(message: 'Local device returned status ${response.statusCode}');
     }
   }
 
@@ -151,7 +151,7 @@ class OfflineDeviceService {
     });
 
     if (response.statusCode != 200) {
-      throw ApiException('Local control update failed with status ${response.statusCode}');
+      throw ApiException(message: 'Local control update failed with status ${response.statusCode}');
     }
   }
 
