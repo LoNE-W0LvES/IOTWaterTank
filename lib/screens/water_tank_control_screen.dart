@@ -180,7 +180,8 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
     final maxInflow = _toDouble(device.deviceConfig['maxInflow']?.value);
 
     // Extract control data
-    final pumpSwitch = device.controlData['pumpSwitch']?.value ?? false;
+    final pumpSwitch = device.controlData['pumpSwitch']?.value ?? false; // Manual switch control
+    final isPumpOn = pumpStatus > 0; // Actual pump status from telemetry
     final isOnline = device.isActive;
 
     return ListView(
@@ -196,7 +197,7 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
             percentage: waterLevel,
             size: 280,
             isDarkMode: isDarkMode,
-            isPumpOn: pumpSwitch,
+            isPumpOn: isPumpOn,
             lowerThreshold: lowerThreshold,
             upperThreshold: upperThreshold,
           ),
