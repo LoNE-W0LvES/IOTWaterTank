@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/device.dart';
 import '../models/control_data.dart';
+import '../models/device_config_parameter.dart';
 import '../utils/api_exception.dart';
 import '../config/app_config.dart';
 import 'api_client.dart';
