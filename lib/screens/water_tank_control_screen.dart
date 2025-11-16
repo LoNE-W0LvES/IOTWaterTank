@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/device.dart';
@@ -14,8 +15,51 @@ class WaterTankControlScreen extends StatefulWidget {
   State<WaterTankControlScreen> createState() => _WaterTankControlScreenState();
 }
 
-class _WaterTankControlScreenState extends State<WaterTankControlScreen> {
+class _WaterTankControlScreenState extends State<WaterTankControlScreen>
+    with SingleTickerProviderStateMixin {
   bool _isTogglingPump = false;
+  Timer? _refreshTimer;
+  DateTime _lastUpdate = DateTime.now();
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize pulse animation for LIVE indicator
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    // Start auto-refresh timer (every 3 seconds)
+    _startAutoRefresh();
+  }
+
+  @override
+  void dispose() {
+    // Cancel timer and animation when screen is disposed
+    _refreshTimer?.cancel();
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  void _startAutoRefresh() {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      final deviceProvider = context.read<DeviceProvider>();
+      if (deviceProvider.selectedDevice != null && !deviceProvider.isLoading) {
+        deviceProvider.selectDevice(deviceProvider.selectedDevice!.id).then((_) {
+          if (mounted) {
+            setState(() {
+              _lastUpdate = DateTime.now();
+            });
+          }
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -222,13 +266,32 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen> {
                       color: isOnline ? Colors.green : Colors.grey,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(
-                      isOnline ? 'Online' : 'Offline',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isOnline) ...[
+                          FadeTransition(
+                            opacity: _pulseAnimation,
+                            child: Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                        ],
+                        Text(
+                          isOnline ? 'LIVE' : 'Offline',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
