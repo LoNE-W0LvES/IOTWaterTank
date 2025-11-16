@@ -61,11 +61,15 @@ class _CircularWaterLevelState extends State<CircularWaterLevel>
     final displayPercentage = widget.percentage.clamp(0.0, 100.0);
     final waterLevel = displayPercentage / 100.0;
 
+    // Add extra space for glow effect (blurRadius + spreadRadius needs room)
+    final containerSize = widget.size + 100; // Extra 100px for full glow visibility
+
     return SizedBox(
-      width: widget.size,
-      height: widget.size,
+      width: containerSize,
+      height: containerSize,
       child: Stack(
         alignment: Alignment.center,
+        clipBehavior: Clip.none, // Allow glow to extend beyond bounds
         children: [
           // Outer glow effect (only for dark mode)
           if (widget.isDarkMode)
@@ -165,30 +169,6 @@ class _CircularWaterLevelState extends State<CircularWaterLevel>
                 ),
               ),
             ],
-          ),
-
-          // Side labels (0% and 100%)
-          Positioned(
-            left: -10,
-            child: Text(
-              '0%',
-              style: textTheme.labelLarge?.copyWith(
-                fontSize: widget.size * 0.045,
-                fontWeight: FontWeight.w600,
-                color: colorScheme.onSurface.withOpacity(0.6),
-              ),
-            ),
-          ),
-          Positioned(
-            right: -10,
-            child: Text(
-              '100%',
-              style: textTheme.labelLarge?.copyWith(
-                fontSize: widget.size * 0.045,
-                fontWeight: FontWeight.w600,
-                color: colorScheme.onSurface.withOpacity(0.6),
-              ),
-            ),
           ),
         ],
       ),
