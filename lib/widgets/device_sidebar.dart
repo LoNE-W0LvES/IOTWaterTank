@@ -193,11 +193,11 @@ class _DeviceSidebarState extends State<DeviceSidebar> {
                         return DeviceCardSidebar(
                           device: device,
                           onTap: () {
-                            deviceProvider.selectDevice(device);
+                            deviceProvider.setSelectedDevice(device);
                             Navigator.of(context).pop(); // Close drawer
                             Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (context) => WaterTankControlScreen(device: device),
+                                builder: (context) => const WaterTankControlScreen(),
                               ),
                             );
                           },
@@ -307,6 +307,21 @@ class DeviceCardSidebar extends StatelessWidget {
     required this.onWiFiTap,
   }) : super(key: key);
 
+  /// Convert string color to Color object
+  Color _getColorFromString(String colorString) {
+    switch (colorString.toLowerCase()) {
+      case 'green':
+        return const Color(0xFF10B981); // Green-500
+      case 'yellow':
+        return const Color(0xFFFBBF24); // Yellow-400
+      case 'red':
+        return const Color(0xFFEF4444); // Red-500
+      case 'grey':
+      default:
+        return const Color(0xFF6B7280); // Gray-500
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -370,13 +385,13 @@ class DeviceCardSidebar extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: device.getStatusColor().withOpacity(0.1),
+                      color: _getColorFromString(device.getStatusColor()).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       device.getStatusText(),
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: device.getStatusColor(),
+                        color: _getColorFromString(device.getStatusColor()),
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                       ),
