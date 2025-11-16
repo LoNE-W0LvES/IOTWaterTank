@@ -212,25 +212,31 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
         ),
         const SizedBox(height: 12),
 
-        // Water Used card (full width)
-        _buildMetricCard(
-          context,
-          'Water Used',
-          '${usedTotal.toStringAsFixed(0)}L',
-          Icons.water_drop,
-          isDarkMode,
+        // Water Used and Inflow side by side
+        Row(
+          children: [
+            Expanded(
+              child: _buildMetricCard(
+                context,
+                'Water Used',
+                '${usedTotal.toStringAsFixed(0)}L',
+                Icons.water_drop,
+                isDarkMode,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildMetricCard(
+                context,
+                'Inflow',
+                '${currInflow.toStringAsFixed(1)} L/min',
+                Icons.water,
+                isDarkMode,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
-
-        // Inflow card (full width)
-        _buildMetricCard(
-          context,
-          'Inflow',
-          '${currInflow.toStringAsFixed(1)} L/min',
-          Icons.water,
-          isDarkMode,
-        ),
-        const SizedBox(height: 40),
+        const SizedBox(height: 24),
 
         // Large Circular Pump Control Button
         _buildPumpControlButton(context, device, pumpSwitch, isDarkMode),

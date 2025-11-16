@@ -56,7 +56,10 @@ class _CircularWaterLevelState extends State<CircularWaterLevel>
       return Colors.green;
     }
 
-    // If pump is OFF, gradient from red (low) to blue (high)
+    // Cyan color (ocean blue/sky blue)
+    const cyanColor = Color(0xFF22D3EE); // cyan-400
+
+    // If pump is OFF, gradient from red (low) to cyan (high)
     // Calculate position between lower and upper thresholds
     final lower = widget.lowerThreshold;
     final upper = widget.upperThreshold;
@@ -66,17 +69,17 @@ class _CircularWaterLevelState extends State<CircularWaterLevel>
       return Colors.red;
     }
 
-    // If above upper threshold, return blue
+    // If above upper threshold, return cyan
     if (percentage >= upper) {
-      return Colors.blue;
+      return cyanColor;
     }
 
-    // Between thresholds: interpolate from red to blue
+    // Between thresholds: interpolate from red to cyan
     final range = upper - lower;
     final position = (percentage - lower) / range; // 0.0 to 1.0
 
-    // Interpolate between red and blue
-    return Color.lerp(Colors.red, Colors.blue, position)!;
+    // Interpolate between red and cyan
+    return Color.lerp(Colors.red, cyanColor, position)!;
   }
 
   @override
