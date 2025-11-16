@@ -178,6 +178,28 @@ class _CircularWaterLevelState extends State<CircularWaterLevel>
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // Pump Status (ON/OFF)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: primaryColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: primaryColor,
+                    width: 2,
+                  ),
+                ),
+                child: Text(
+                  widget.isPumpOn ? 'ON' : 'OFF',
+                  style: TextStyle(
+                    fontSize: widget.size * 0.05,
+                    fontWeight: FontWeight.bold,
+                    color: primaryColor,
+                    letterSpacing: 2,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               // Percentage
               Text(
                 '${displayPercentage.toInt()}%',

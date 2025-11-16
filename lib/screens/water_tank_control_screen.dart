@@ -212,29 +212,13 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
         ),
         const SizedBox(height: 12),
 
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricCard(
-                context,
-                'Pump Status',
-                pumpStatus > 0 ? 'ON' : 'OFF',
-                Icons.settings,
-                isDarkMode,
-                statusColor: pumpStatus > 0 ? Colors.green : Colors.grey,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildMetricCard(
-                context,
-                'Water Used',
-                '${usedTotal.toStringAsFixed(0)}L',
-                Icons.water_drop,
-                isDarkMode,
-              ),
-            ),
-          ],
+        // Water Used card (full width)
+        _buildMetricCard(
+          context,
+          'Water Used',
+          '${usedTotal.toStringAsFixed(0)}L',
+          Icons.water_drop,
+          isDarkMode,
         ),
         const SizedBox(height: 12),
 
