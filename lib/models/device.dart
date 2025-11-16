@@ -37,6 +37,20 @@ class Device extends Equatable {
 
   /// Create from JSON
   factory Device.fromJson(Map<String, dynamic> json) {
+    // Parse projectId - handle both string and object format
+    String? projectId;
+    String? projectName;
+    final projectIdValue = json['projectId'];
+    if (projectIdValue != null) {
+      if (projectIdValue is String) {
+        projectId = projectIdValue;
+        projectName = json['projectName'] as String?;
+      } else if (projectIdValue is Map<String, dynamic>) {
+        projectId = projectIdValue['projectId'] as String?;
+        projectName = projectIdValue['name'] as String?;
+      }
+    }
+
     // Parse device config
     final Map<String, DeviceConfigParameter> config = {};
     final deviceConfigJson = json['deviceConfig'] as Map<String, dynamic>?;
@@ -66,6 +80,15 @@ class Device extends Equatable {
       telemetryDataJson.forEach((key, value) {
         if (value is Map<String, dynamic>) {
           telemetry[key] = TelemetryData.fromJson(key, value);
+        } else if (value != null) {
+          // Handle raw values (just numbers or strings)
+          // Create a TelemetryData object from the raw value
+          final type = value is num ? 'number' : (value is bool ? 'boolean' : 'string');
+          telemetry[key] = TelemetryData(
+            key: key,
+            type: type,
+            value: value,
+          );
         }
       });
     }
@@ -75,8 +98,8 @@ class Device extends Equatable {
       name: json['name'] as String,
       deviceId: json['deviceId'] as String,
       description: json['description'] as String?,
-      projectId: json['projectId'] as String?,
-      projectName: json['projectName'] as String?,
+      projectId: projectId,
+      projectName: projectName,
       deviceConfig: config,
       controlData: controls,
       telemetryData: telemetry,

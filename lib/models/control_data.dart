@@ -23,14 +23,25 @@ class ControlData extends Equatable {
 
   /// Create from JSON
   factory ControlData.fromJson(String key, Map<String, dynamic> json) {
-    // Parse lastModified - handle both int and string from API
+    // Parse lastModified - handle int, string (Unix timestamp), and ISO date string
     int? lastModified;
     final lastModifiedValue = json['lastModified'];
     if (lastModifiedValue != null) {
       if (lastModifiedValue is int) {
         lastModified = lastModifiedValue;
       } else if (lastModifiedValue is String) {
+        // Try parsing as Unix timestamp first
         lastModified = int.tryParse(lastModifiedValue);
+        // If that fails, try parsing as ISO date string
+        if (lastModified == null) {
+          try {
+            final dateTime = DateTime.parse(lastModifiedValue);
+            lastModified = dateTime.millisecondsSinceEpoch;
+          } catch (e) {
+            // If parsing fails, leave as null
+            lastModified = null;
+          }
+        }
       }
     }
 
