@@ -1,6 +1,7 @@
 import '../config/app_config.dart';
 import '../models/device.dart';
 import '../models/control_data.dart';
+import '../models/device_config_parameter.dart';
 import 'api_client.dart';
 import '../utils/api_exception.dart';
 
@@ -228,6 +229,68 @@ class DeviceService {
 
       throw ApiException(
         message: 'Failed to remove device',
+        statusCode: response.statusCode,
+      );
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException.fromError(e);
+    }
+  }
+
+  /// Update device configuration and set config_update flag
+  Future<Device> updateDeviceConfig(
+    String deviceId,
+    Map<String, DeviceConfigParameter> deviceConfig,
+  ) async {
+    try {
+      // Prepare the config_update flag with current timestamp
+      final configUpdateFlag = ControlData(
+        key: 'config_update',
+        label: 'Configuration Update',
+        type: 'boolean',
+        value: true,
+        defaultValue: true,
+        lastModified: DateTime.now().millisecondsSinceEpoch,
+        system: true,
+      );
+
+      // Prepare payload with both deviceConfig and controlData
+      final payload = {
+        'deviceConfig': deviceConfig.map(
+          (key, value) => MapEntry(key, value.toJson()),
+        ),
+        'controlData': {
+          'config_update': configUpdateFlag.toJson(),
+        },
+      };
+
+      final response = await _apiClient.patch(
+        '${AppConfig.devicesEndpoint}/$deviceId',
+        data: payload,
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+
+        // Handle both {data: {...}} and direct object response
+        Map<String, dynamic> deviceData;
+        if (data is Map && data.containsKey('data')) {
+          deviceData = data['data'] as Map<String, dynamic>;
+        } else if (data is Map<String, dynamic>) {
+          deviceData = data;
+        } else {
+          throw ApiException(
+            message: 'Unexpected response format',
+            statusCode: response.statusCode,
+            data: data,
+          );
+        }
+
+        return Device.fromJson(deviceData);
+      }
+
+      throw ApiException(
+        message: 'Failed to update device configuration',
         statusCode: response.statusCode,
       );
     } catch (e) {

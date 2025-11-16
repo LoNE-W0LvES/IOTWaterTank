@@ -6,6 +6,7 @@ import '../providers/device_provider.dart';
 import '../services/device_service.dart';
 import '../utils/api_exception.dart';
 import 'device_control_screen.dart';
+import 'device_config_edit_screen.dart';
 
 /// Device Settings Screen for viewing device info and removing device
 class DeviceSettingsScreen extends StatefulWidget {
@@ -265,6 +266,48 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                       ),
                     ],
                   ),
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
+              // Configuration Section
+              Text(
+                'CONFIGURATION',
+                style: textTheme.titleSmall?.copyWith(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              Card(
+                child: ListTile(
+                  leading: Icon(
+                    Icons.settings,
+                    color: colorScheme.primary,
+                  ),
+                  title: const Text('Device Configuration'),
+                  subtitle: Text(
+                    widget.device.deviceConfig.isEmpty
+                        ? 'No configuration available'
+                        : '${widget.device.deviceConfig.length} parameter(s)',
+                  ),
+                  trailing: widget.device.deviceConfig.isNotEmpty
+                      ? const Icon(Icons.arrow_forward_ios, size: 16)
+                      : null,
+                  onTap: widget.device.deviceConfig.isEmpty
+                      ? null
+                      : () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => DeviceConfigEditScreen(
+                                device: widget.device,
+                              ),
+                            ),
+                          );
+                        },
                 ),
               ),
 

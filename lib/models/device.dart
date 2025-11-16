@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'control_data.dart';
 import 'telemetry_data.dart';
+import 'device_config_parameter.dart';
 
 /// Represents an IoT device
 class Device extends Equatable {
@@ -10,6 +11,7 @@ class Device extends Equatable {
   final String? description;
   final String? projectId;
   final String? projectName;
+  final Map<String, DeviceConfigParameter> deviceConfig;
   final Map<String, ControlData> controlData;
   final Map<String, TelemetryData> telemetryData;
   final bool isActive;
@@ -24,6 +26,7 @@ class Device extends Equatable {
     this.description,
     this.projectId,
     this.projectName,
+    this.deviceConfig = const {},
     this.controlData = const {},
     this.telemetryData = const {},
     this.isActive = false,
@@ -34,6 +37,17 @@ class Device extends Equatable {
 
   /// Create from JSON
   factory Device.fromJson(Map<String, dynamic> json) {
+    // Parse device config
+    final Map<String, DeviceConfigParameter> config = {};
+    final deviceConfigJson = json['deviceConfig'] as Map<String, dynamic>?;
+    if (deviceConfigJson != null) {
+      deviceConfigJson.forEach((key, value) {
+        if (value is Map<String, dynamic>) {
+          config[key] = DeviceConfigParameter.fromJson(key, value);
+        }
+      });
+    }
+
     // Parse control data
     final Map<String, ControlData> controls = {};
     final controlDataJson = json['controlData'] as Map<String, dynamic>?;
@@ -63,6 +77,7 @@ class Device extends Equatable {
       description: json['description'] as String?,
       projectId: json['projectId'] as String?,
       projectName: json['projectName'] as String?,
+      deviceConfig: config,
       controlData: controls,
       telemetryData: telemetry,
       isActive: json['isActive'] as bool? ?? false,
@@ -87,11 +102,11 @@ class Device extends Equatable {
       if (description != null) 'description': description,
       if (projectId != null) 'projectId': projectId,
       if (projectName != null) 'projectName': projectName,
+      'deviceConfig': deviceConfig.map(
+        (key, value) => MapEntry(key, value.toJson()),
+      ),
       'controlData': controlData.map(
-        (key, value) => MapEntry(key, {
-          'type': value.type,
-          'value': value.value,
-        }),
+        (key, value) => MapEntry(key, value.toJson()),
       ),
       'telemetryData': telemetry.map(
         (key, value) => MapEntry(key, value.toJson()),
@@ -164,6 +179,7 @@ class Device extends Equatable {
     String? description,
     String? projectId,
     String? projectName,
+    Map<String, DeviceConfigParameter>? deviceConfig,
     Map<String, ControlData>? controlData,
     Map<String, TelemetryData>? telemetryData,
     bool? isActive,
@@ -178,6 +194,7 @@ class Device extends Equatable {
       description: description ?? this.description,
       projectId: projectId ?? this.projectId,
       projectName: projectName ?? this.projectName,
+      deviceConfig: deviceConfig ?? this.deviceConfig,
       controlData: controlData ?? this.controlData,
       telemetryData: telemetryData ?? this.telemetryData,
       isActive: isActive ?? this.isActive,
@@ -195,6 +212,7 @@ class Device extends Equatable {
         description,
         projectId,
         projectName,
+        deviceConfig,
         controlData,
         telemetryData,
         isActive,

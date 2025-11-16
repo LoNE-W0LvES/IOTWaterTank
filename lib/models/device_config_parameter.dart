@@ -1,34 +1,33 @@
 import 'package:equatable/equatable.dart';
 
-/// Represents a single control data field
-class ControlData extends Equatable {
+/// Represents a single device configuration parameter
+class DeviceConfigParameter extends Equatable {
   final String key;
   final String label;
-  final String type; // 'boolean', 'number', 'string'
+  final String type; // 'string', 'number', 'boolean'
   final dynamic value;
   final dynamic defaultValue;
   final int? lastModified; // Unix timestamp in milliseconds
   final bool system; // True for system flags like config_update
 
-  const ControlData({
+  const DeviceConfigParameter({
     required this.key,
+    required this.label,
     required this.type,
     required this.value,
-    String? label,
-    dynamic defaultValue,
+    required this.defaultValue,
     this.lastModified,
     this.system = false,
-  })  : label = label ?? key,
-        defaultValue = defaultValue ?? value;
+  });
 
   /// Create from JSON
-  factory ControlData.fromJson(String key, Map<String, dynamic> json) {
-    return ControlData(
+  factory DeviceConfigParameter.fromJson(String key, Map<String, dynamic> json) {
+    return DeviceConfigParameter(
       key: key,
       label: json['label'] as String? ?? key,
       type: json['type'] as String,
       value: json['value'],
-      defaultValue: json['defaultValue'] ?? json['value'],
+      defaultValue: json['defaultValue'],
       lastModified: json['lastModified'] as int?,
       system: json['system'] as bool? ?? false,
     );
@@ -47,8 +46,8 @@ class ControlData extends Equatable {
     };
   }
 
-  /// Create a copy with updated value
-  ControlData copyWith({
+  /// Create a copy with updated fields
+  DeviceConfigParameter copyWith({
     String? key,
     String? label,
     String? type,
@@ -57,7 +56,7 @@ class ControlData extends Equatable {
     int? lastModified,
     bool? system,
   }) {
-    return ControlData(
+    return DeviceConfigParameter(
       key: key ?? this.key,
       label: label ?? this.label,
       type: type ?? this.type,
@@ -69,7 +68,7 @@ class ControlData extends Equatable {
   }
 
   /// Create a copy with new value and timestamp
-  ControlData withNewValue(dynamic newValue) {
+  DeviceConfigParameter withNewValue(dynamic newValue) {
     return copyWith(
       value: newValue,
       defaultValue: newValue,
@@ -94,5 +93,5 @@ class ControlData extends Equatable {
 
   @override
   String toString() =>
-      'ControlData(key: $key, type: $type, value: $value, lastModified: $lastModified)';
+      'DeviceConfigParameter(key: $key, type: $type, value: $value, lastModified: $lastModified)';
 }
