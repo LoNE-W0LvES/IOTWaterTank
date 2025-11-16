@@ -71,14 +71,26 @@ class WiFiSetupService {
     required String deviceId,
     required String ssid,
     required String password,
+    String? dashboardUsername,
+    String? dashboardPassword,
   }) async {
     try {
+      final data = {
+        'ssid': ssid,
+        'password': password,
+      };
+
+      // Add dashboard credentials if provided
+      if (dashboardUsername != null && dashboardUsername.isNotEmpty) {
+        data['dashboardUsername'] = dashboardUsername;
+      }
+      if (dashboardPassword != null && dashboardPassword.isNotEmpty) {
+        data['dashboardPassword'] = dashboardPassword;
+      }
+
       final response = await _dio.post(
         '/$deviceId/save',
-        data: {
-          'ssid': ssid,
-          'password': password,
-        },
+        data: data,
       );
 
       if (response.statusCode == 200) {

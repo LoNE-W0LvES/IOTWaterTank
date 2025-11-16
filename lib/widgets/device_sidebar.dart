@@ -409,17 +409,17 @@ class DeviceCardSidebar extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  // WiFi button
+                  // WiFi Setup button
                   Material(
-                    color: theme.primaryColor.withOpacity(0.15),
+                    color: theme.primaryColor.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(6),
                     child: InkWell(
                       onTap: onWiFiTap,
                       borderRadius: BorderRadius.circular(6),
                       child: Padding(
-                        padding: const EdgeInsets.all(6),
+                        padding: const EdgeInsets.all(7),
                         child: Icon(
-                          Icons.wifi,
+                          Icons.build,
                           size: 18,
                           color: theme.primaryColor,
                         ),

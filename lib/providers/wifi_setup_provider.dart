@@ -20,7 +20,10 @@ class WiFiSetupProvider with ChangeNotifier {
   List<WiFiNetwork> _availableNetworks = [];
   String _selectedSSID = '';
   String _password = '';
+  String _dashboardUsername = '';
+  String _dashboardPassword = '';
   bool _isPasswordVisible = false;
+  bool _isDashboardPasswordVisible = false;
   bool _isScanning = false;
 
   // Getters
@@ -31,7 +34,10 @@ class WiFiSetupProvider with ChangeNotifier {
   List<WiFiNetwork> get availableNetworks => _availableNetworks;
   String get selectedSSID => _selectedSSID;
   String get password => _password;
+  String get dashboardUsername => _dashboardUsername;
+  String get dashboardPassword => _dashboardPassword;
   bool get isPasswordVisible => _isPasswordVisible;
+  bool get isDashboardPasswordVisible => _isDashboardPasswordVisible;
   bool get isScanning => _isScanning;
 
   /// Reset state for new setup flow
@@ -43,7 +49,10 @@ class WiFiSetupProvider with ChangeNotifier {
     _availableNetworks = [];
     _selectedSSID = '';
     _password = '';
+    _dashboardUsername = '';
+    _dashboardPassword = '';
     _isPasswordVisible = false;
+    _isDashboardPasswordVisible = false;
     _isScanning = false;
     notifyListeners();
   }
@@ -122,9 +131,27 @@ class WiFiSetupProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Set dashboard username
+  void setDashboardUsername(String username) {
+    _dashboardUsername = username;
+    notifyListeners();
+  }
+
+  /// Set dashboard password
+  void setDashboardPassword(String password) {
+    _dashboardPassword = password;
+    notifyListeners();
+  }
+
   /// Toggle password visibility
   void togglePasswordVisibility() {
     _isPasswordVisible = !_isPasswordVisible;
+    notifyListeners();
+  }
+
+  /// Toggle dashboard password visibility
+  void toggleDashboardPasswordVisibility() {
+    _isDashboardPasswordVisible = !_isDashboardPasswordVisible;
     notifyListeners();
   }
 
@@ -158,6 +185,8 @@ class WiFiSetupProvider with ChangeNotifier {
         deviceId: deviceId,
         ssid: _selectedSSID,
         password: _password,
+        dashboardUsername: _dashboardUsername,
+        dashboardPassword: _dashboardPassword,
       );
 
       if (response.success) {

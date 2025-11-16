@@ -20,6 +20,8 @@ class WiFiSetupScreen extends StatefulWidget {
 class _WiFiSetupScreenState extends State<WiFiSetupScreen> {
   final TextEditingController _ssidController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _dashboardUsernameController = TextEditingController();
+  final TextEditingController _dashboardPasswordController = TextEditingController();
 
   @override
   void initState() {
@@ -58,6 +60,8 @@ class _WiFiSetupScreenState extends State<WiFiSetupScreen> {
     // Update provider with text field values
     provider.setSelectedSSID(_ssidController.text);
     provider.setPassword(_passwordController.text);
+    provider.setDashboardUsername(_dashboardUsernameController.text);
+    provider.setDashboardPassword(_dashboardPasswordController.text);
 
     final success = await provider.saveWiFiCredentials(widget.deviceId);
 
@@ -82,6 +86,8 @@ class _WiFiSetupScreenState extends State<WiFiSetupScreen> {
   void dispose() {
     _ssidController.dispose();
     _passwordController.dispose();
+    _dashboardUsernameController.dispose();
+    _dashboardPasswordController.dispose();
     super.dispose();
   }
 
@@ -293,7 +299,7 @@ class _WiFiSetupScreenState extends State<WiFiSetupScreen> {
             controller: _passwordController,
             obscureText: !provider.isPasswordVisible,
             decoration: InputDecoration(
-              labelText: 'Password',
+              labelText: 'WiFi Password',
               hintText: 'Enter WiFi password',
               prefixIcon: const Icon(Icons.lock),
               suffixIcon: IconButton(
@@ -309,6 +315,58 @@ class _WiFiSetupScreenState extends State<WiFiSetupScreen> {
               fillColor: isDark ? const Color(0xFF1F2937) : Colors.white,
             ),
             onChanged: (value) => provider.setPassword(value),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Dashboard Credentials section
+          Text(
+            'Dashboard Credentials',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Dashboard Username field
+          TextField(
+            controller: _dashboardUsernameController,
+            decoration: InputDecoration(
+              labelText: 'Dashboard Username',
+              hintText: 'Enter dashboard username',
+              prefixIcon: const Icon(Icons.person),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              filled: true,
+              fillColor: isDark ? const Color(0xFF1F2937) : Colors.white,
+            ),
+            onChanged: (value) => provider.setDashboardUsername(value),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Dashboard Password field
+          TextField(
+            controller: _dashboardPasswordController,
+            obscureText: !provider.isDashboardPasswordVisible,
+            decoration: InputDecoration(
+              labelText: 'Dashboard Password',
+              hintText: 'Enter dashboard password',
+              prefixIcon: const Icon(Icons.vpn_key),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  provider.isDashboardPasswordVisible ? Icons.visibility_off : Icons.visibility,
+                ),
+                onPressed: provider.toggleDashboardPasswordVisibility,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              filled: true,
+              fillColor: isDark ? const Color(0xFF1F2937) : Colors.white,
+            ),
+            onChanged: (value) => provider.setDashboardPassword(value),
           ),
 
           const SizedBox(height: 24),
