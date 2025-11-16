@@ -22,13 +22,24 @@ class DeviceConfigParameter extends Equatable {
 
   /// Create from JSON
   factory DeviceConfigParameter.fromJson(String key, Map<String, dynamic> json) {
+    // Parse lastModified - handle both int and string from API
+    int? lastModified;
+    final lastModifiedValue = json['lastModified'];
+    if (lastModifiedValue != null) {
+      if (lastModifiedValue is int) {
+        lastModified = lastModifiedValue;
+      } else if (lastModifiedValue is String) {
+        lastModified = int.tryParse(lastModifiedValue);
+      }
+    }
+
     return DeviceConfigParameter(
       key: key,
       label: json['label'] as String? ?? key,
       type: json['type'] as String,
       value: json['value'],
       defaultValue: json['defaultValue'],
-      lastModified: json['lastModified'] as int?,
+      lastModified: lastModified,
       system: json['system'] as bool? ?? false,
     );
   }
