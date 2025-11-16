@@ -346,7 +346,9 @@ class _DeviceConfigEditScreenState extends State<DeviceConfigEditScreen> {
                     ),
                   )
                 else
-                  ..._modifiedConfig.entries.map((entry) {
+                  ..._modifiedConfig.entries
+                      .where((entry) => !entry.value.hidden) // Filter out hidden fields
+                      .map((entry) {
                     return _buildConfigField(entry.key, entry.value);
                   }),
 

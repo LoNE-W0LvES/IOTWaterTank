@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/device.dart';
 import '../providers/device_provider.dart';
+import '../providers/offline_provider.dart';
 import '../widgets/loading_widget.dart';
 import '../widgets/error_widget.dart';
 import 'device_config_edit_screen.dart';
@@ -47,16 +48,41 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
   }
 
   void _startAutoRefresh() {
-    _refreshTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
       final deviceProvider = context.read<DeviceProvider>();
+      final offlineProvider = context.read<OfflineProvider>();
+
       if (deviceProvider.selectedDevice != null && !deviceProvider.isLoading) {
-        deviceProvider.selectDevice(deviceProvider.selectedDevice!.id).then((_) {
+        try {
+          // Get local IP from device config
+          final localIp = deviceProvider.selectedDevice!.deviceConfig['ip_address']?.value;
+          final deviceId = deviceProvider.selectedDevice!.id;
+
+          // Try to get data using offline service (local first, then server)
+          final device = await offlineProvider.service.getDevice(
+            deviceId,
+            localIp: localIp?.toString(),
+          );
+
+          // Update the provider with new data
+          deviceProvider.setSelectedDevice(device);
+
           if (mounted) {
             setState(() {
               _lastUpdate = DateTime.now();
             });
           }
-        });
+        } catch (e) {
+          print('Auto-refresh failed: $e');
+          // Fall back to regular provider method
+          deviceProvider.selectDevice(deviceProvider.selectedDevice!.id).then((_) {
+            if (mounted) {
+              setState(() {
+                _lastUpdate = DateTime.now();
+              });
+            }
+          });
+        }
       }
     });
   }
@@ -224,101 +250,193 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
   }
 
   Widget _buildHeader(BuildContext context, Device device, bool isOnline) {
-    return Row(
-      children: [
-        // Back button
-        IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-        const SizedBox(width: 8),
+    return Consumer<OfflineProvider>(
+      builder: (context, offlineProvider, child) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                // Back button
+                IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                const SizedBox(width: 8),
 
-        // Device ID and status
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Device ID:',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-              ),
-              const SizedBox(height: 2),
-              Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      device.deviceId,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isOnline ? Colors.green : Colors.grey,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (isOnline) ...[
-                          FadeTransition(
-                            opacity: _pulseAnimation,
-                            child: Container(
-                              width: 6,
-                              height: 6,
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
+                // Device ID and status
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Device ID:',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              device.deviceId,
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isOnline ? Colors.green : Colors.grey,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (isOnline) ...[
+                                  FadeTransition(
+                                    opacity: _pulseAnimation,
+                                    child: Container(
+                                      width: 6,
+                                      height: 6,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                ],
+                                Text(
+                                  isOnline ? 'LIVE' : 'Offline',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
-                        Text(
-                          isOnline ? 'LIVE' : 'Offline',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Sync button (if pending changes)
+                if (offlineProvider.pendingChanges > 0)
+                  IconButton(
+                    icon: Stack(
+                      children: [
+                        const Icon(Icons.sync),
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 12,
+                              minHeight: 12,
+                            ),
+                            child: Text(
+                              '${offlineProvider.pendingChanges}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
                           ),
                         ),
                       ],
                     ),
+                    onPressed: offlineProvider.isSyncing
+                        ? null
+                        : () async {
+                            await offlineProvider.syncPendingChanges();
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    offlineProvider.lastSyncResult?.allSynced == true
+                                        ? 'Synced ${offlineProvider.lastSyncResult!.synced} change(s)'
+                                        : 'Sync completed with ${offlineProvider.lastSyncResult?.failed ?? 0} failure(s)',
+                                  ),
+                                  backgroundColor: offlineProvider.lastSyncResult?.hasFailures == true
+                                      ? Colors.orange
+                                      : Colors.green,
+                                ),
+                              );
+                            }
+                          },
+                    tooltip: 'Sync ${offlineProvider.pendingChanges} pending change(s)',
                   ),
-                ],
-              ),
-            ],
-          ),
-        ),
 
-        // Info button
-        IconButton(
-          icon: const Icon(Icons.info_outline),
-          onPressed: () => _showDeviceInfoDialog(context, device),
-        ),
+                // Info button
+                IconButton(
+                  icon: const Icon(Icons.info_outline),
+                  onPressed: () => _showDeviceInfoDialog(context, device),
+                ),
 
-        // Settings button
-        IconButton(
-          icon: const Icon(Icons.settings),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => DeviceConfigEditScreen(device: device),
+                // Settings button
+                IconButton(
+                  icon: const Icon(Icons.settings),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DeviceConfigEditScreen(device: device),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+
+            // Network status indicator
+            if (!offlineProvider.isOnline)
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.cloud_off, size: 16, color: Colors.orange),
+                    const SizedBox(width: 8),
+                    Text(
+                      offlineProvider.pendingChanges > 0
+                          ? 'Offline - ${offlineProvider.pendingChanges} change(s) pending'
+                          : 'Offline mode - using cached data',
+                      style: const TextStyle(
+                        color: Colors.orange,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            );
-          },
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
@@ -445,21 +563,44 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
               : () async {
                   setState(() => _isTogglingPump = true);
 
-                  final success = await deviceProvider.updateControl(
-                    'pumpSwitch',
-                    !pumpSwitch,
-                    'boolean',
-                  );
+                  final offlineProvider = context.read<OfflineProvider>();
+                  final localIp = device.deviceConfig['ip_address']?.value;
 
-                  setState(() => _isTogglingPump = false);
-
-                  if (!success && mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(deviceProvider.error ?? 'Failed to toggle pump'),
-                        backgroundColor: Theme.of(context).colorScheme.error,
-                      ),
+                  try {
+                    // Use offline service (tries local first, then server)
+                    await offlineProvider.service.updateControl(
+                      device.id,
+                      'pumpSwitch',
+                      !pumpSwitch,
+                      'boolean',
+                      localIp: localIp?.toString(),
                     );
+
+                    // Immediately refresh to get updated state
+                    await deviceProvider.selectDevice(device.id);
+
+                    setState(() => _isTogglingPump = false);
+
+                    // Show sync status if offline
+                    if (!offlineProvider.isOnline && mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Command queued for sync (offline mode)'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    setState(() => _isTogglingPump = false);
+
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Failed to toggle pump: $e'),
+                          backgroundColor: Theme.of(context).colorScheme.error,
+                        ),
+                      );
+                    }
                   }
                 },
           borderRadius: BorderRadius.circular(16),

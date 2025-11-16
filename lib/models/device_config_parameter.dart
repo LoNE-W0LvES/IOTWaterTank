@@ -11,6 +11,7 @@ class DeviceConfigParameter extends Equatable {
   final bool system; // True for system flags like config_update
   final List<String>? options; // Options for dropdown type
   final String? description; // Optional description
+  final bool hidden; // True to hide from user UI
 
   const DeviceConfigParameter({
     required this.key,
@@ -22,6 +23,7 @@ class DeviceConfigParameter extends Equatable {
     this.system = false,
     this.options,
     this.description,
+    this.hidden = false,
   });
 
   /// Create from JSON
@@ -64,6 +66,7 @@ class DeviceConfigParameter extends Equatable {
       system: json['system'] as bool? ?? false,
       options: options,
       description: json['description'] as String?,
+      hidden: json['hidden'] as bool? ?? false,
     );
   }
 
@@ -79,6 +82,7 @@ class DeviceConfigParameter extends Equatable {
       if (system) 'system': system,
       if (options != null) 'options': options,
       if (description != null) 'description': description,
+      if (hidden) 'hidden': hidden,
     };
   }
 
@@ -93,6 +97,7 @@ class DeviceConfigParameter extends Equatable {
     bool? system,
     List<String>? options,
     String? description,
+    bool? hidden,
   }) {
     return DeviceConfigParameter(
       key: key ?? this.key,
@@ -104,6 +109,7 @@ class DeviceConfigParameter extends Equatable {
       system: system ?? this.system,
       options: options ?? this.options,
       description: description ?? this.description,
+      hidden: hidden ?? this.hidden,
     );
   }
 
@@ -129,7 +135,7 @@ class DeviceConfigParameter extends Equatable {
   String get stringValue => value?.toString() ?? '';
 
   @override
-  List<Object?> get props => [key, label, type, value, defaultValue, lastModified, system, options, description];
+  List<Object?> get props => [key, label, type, value, defaultValue, lastModified, system, options, description, hidden];
 
   @override
   String toString() =>

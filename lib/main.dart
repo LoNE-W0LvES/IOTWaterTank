@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/device_provider.dart';
+import 'providers/offline_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/device_list_screen.dart';
 import 'config/app_config.dart';
@@ -12,15 +13,18 @@ void main() async {
   // Initialize providers
   final authProvider = AuthProvider();
   final deviceProvider = DeviceProvider();
+  final offlineProvider = OfflineProvider();
 
   await authProvider.initialize();
   await deviceProvider.initialize();
+  await offlineProvider.initialize();
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: authProvider),
         ChangeNotifierProvider.value(value: deviceProvider),
+        ChangeNotifierProvider.value(value: offlineProvider),
       ],
       child: const MyApp(),
     ),
