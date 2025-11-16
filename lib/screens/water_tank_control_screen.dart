@@ -4,11 +4,14 @@ import 'package:provider/provider.dart';
 import '../models/device.dart';
 import '../providers/device_provider.dart';
 import '../providers/offline_provider.dart';
+import '../providers/theme_provider.dart' as app_theme;
 import '../widgets/loading_widget.dart';
 import '../widgets/error_widget.dart';
+import '../widgets/circular_water_level.dart';
+import '../widgets/theme_toggle.dart';
 import 'device_config_edit_screen.dart';
 
-/// Water tank specific control screen with custom UI layout
+/// Redesigned Water Tank Control Screen with theme support
 class WaterTankControlScreen extends StatefulWidget {
   const WaterTankControlScreen({Key? key}) : super(key: key);
 
@@ -41,7 +44,6 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
 
   @override
   void dispose() {
-    // Cancel timer and animation when screen is disposed
     _refreshTimer?.cancel();
     _pulseController.dispose();
     super.dispose();
@@ -54,17 +56,14 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
 
       if (deviceProvider.selectedDevice != null && !deviceProvider.isLoading) {
         try {
-          // Get local IP from device config
           final localIp = deviceProvider.selectedDevice!.deviceConfig['ip_address']?.value;
           final deviceId = deviceProvider.selectedDevice!.id;
 
-          // Try to get data using offline service (local first, then server)
           final device = await offlineProvider.service.getDevice(
             deviceId,
             localIp: localIp?.toString(),
           );
 
-          // Update the provider with new data
           deviceProvider.setSelectedDevice(device);
 
           if (mounted) {
@@ -74,7 +73,6 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
           }
         } catch (e) {
           print('Auto-refresh failed: $e');
-          // Fall back to regular provider method
           deviceProvider.selectDevice(deviceProvider.selectedDevice!.id).then((_) {
             if (mounted) {
               setState(() {
@@ -89,56 +87,91 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<app_theme.ThemeProvider>();
+    final isDarkMode = themeProvider.isDarkMode;
+
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      body: Consumer<DeviceProvider>(
-        builder: (context, deviceProvider, child) {
-          final device = deviceProvider.selectedDevice;
+      body: Container(
+        decoration: _buildGradientBackground(isDarkMode),
+        child: SafeArea(
+          child: Consumer<DeviceProvider>(
+            builder: (context, deviceProvider, child) {
+              final device = deviceProvider.selectedDevice;
 
-          // Loading state
-          if (deviceProvider.isLoading && device == null) {
-            return const LoadingWidget(message: 'Loading device...');
-          }
+              // Loading state
+              if (deviceProvider.isLoading && device == null) {
+                return const LoadingWidget(message: 'Loading device...');
+              }
 
-          // Error state
-          if (deviceProvider.error != null && device == null) {
-            return ErrorDisplayWidget(
-              message: deviceProvider.error!,
-              onRetry: () {
-                if (deviceProvider.selectedDevice != null) {
-                  deviceProvider.selectDevice(deviceProvider.selectedDevice!.id);
-                }
-              },
-            );
-          }
+              // Error state
+              if (deviceProvider.error != null && device == null) {
+                return ErrorDisplayWidget(
+                  message: deviceProvider.error!,
+                  onRetry: () {
+                    if (deviceProvider.selectedDevice != null) {
+                      deviceProvider.selectDevice(deviceProvider.selectedDevice!.id);
+                    }
+                  },
+                );
+              }
 
-          // No device selected
-          if (device == null) {
-            return const Center(child: Text('No device selected'));
-          }
+              // No device selected
+              if (device == null) {
+                return const Center(child: Text('No device selected'));
+              }
 
-          return RefreshIndicator(
-            onRefresh: () async {
-              await deviceProvider.selectDevice(device.id);
+              return RefreshIndicator(
+                onRefresh: () async {
+                  await deviceProvider.selectDevice(device.id);
+                },
+                child: _buildWaterTankUI(context, device, deviceProvider, isDarkMode),
+              );
             },
-            child: _buildWaterTankUI(context, device, deviceProvider),
-          );
-        },
+          ),
+        ),
       ),
     );
+  }
+
+  /// Build gradient background based on theme
+  BoxDecoration _buildGradientBackground(bool isDarkMode) {
+    if (isDarkMode) {
+      return const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF1F2937), // gray-800
+            Color(0xFF000000), // black
+          ],
+        ),
+      );
+    } else {
+      return const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFFFFFFF), // white
+            Color(0xFFECFEFF), // cyan-50
+          ],
+        ),
+      );
+    }
   }
 
   Widget _buildWaterTankUI(
     BuildContext context,
     Device device,
     DeviceProvider deviceProvider,
+    bool isDarkMode,
   ) {
     // Extract telemetry data
     final waterLevel = device.telemetryData['waterLevel']?.numberValue ?? 0.0;
     final currInflow = device.telemetryData['currInflow']?.numberValue ?? 0.0;
     final pumpStatus = device.telemetryData['pumpStatus']?.numberValue ?? 0.0;
 
-    // Extract device config - convert to double to avoid type errors
+    // Extract device config
     final upperThreshold = _toDouble(device.deviceConfig['upperThreshold']?.value);
     final lowerThreshold = _toDouble(device.deviceConfig['lowerThreshold']?.value);
     final usedTotal = _toDouble(device.deviceConfig['UsedTotal']?.value);
@@ -149,622 +182,429 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
     final isOnline = device.isActive;
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       children: [
-        // Custom Header
-        _buildHeader(context, device, isOnline),
-        const SizedBox(height: 24),
-
-        // Water Level Label
-        Text(
-          'Water Level',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-        ),
-        const SizedBox(height: 16),
-
-        // Water Level Visual Indicator
-        _buildWaterLevelIndicator(context, waterLevel, upperThreshold, lowerThreshold),
+        // Header with Logo, Title, Device ID, LIVE badge, Theme toggle, Settings
+        _buildModernHeader(context, device, isOnline, isDarkMode),
         const SizedBox(height: 32),
 
-        // Data Grid - Row 1: Thresholds
-        Row(
-          children: [
-            Expanded(
-              child: _buildDataCard(
-                context,
-                'Upper Threshold',
-                '${upperThreshold.toStringAsFixed(0)}%',
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildDataCard(
-                context,
-                'Lower Threshold',
-                '${lowerThreshold.toStringAsFixed(0)}%',
-              ),
-            ),
-          ],
+        // Circular Water Level with Wave Animation
+        Center(
+          child: CircularWaterLevel(
+            percentage: waterLevel,
+            size: 280,
+            isDarkMode: isDarkMode,
+          ),
+        ),
+        const SizedBox(height: 40),
+
+        // Metrics Grid (2 columns)
+        _buildMetricCard(
+          context,
+          'Upper Threshold',
+          '${upperThreshold.toStringAsFixed(0)}%',
+          Icons.arrow_upward,
+          isDarkMode,
+          progress: upperThreshold / 100,
         ),
         const SizedBox(height: 12),
 
-        // Data Grid - Row 2: Total Water Used & Pump Status
+        _buildMetricCard(
+          context,
+          'Lower Threshold',
+          '${lowerThreshold.toStringAsFixed(0)}%',
+          Icons.arrow_downward,
+          isDarkMode,
+        ),
+        const SizedBox(height: 12),
+
         Row(
           children: [
             Expanded(
-              child: _buildDataCard(
-                context,
-                'Total Water Used',
-                '${usedTotal.toStringAsFixed(0)}L',
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildDataCard(
+              child: _buildMetricCard(
                 context,
                 'Pump Status',
                 pumpStatus > 0 ? 'ON' : 'OFF',
-                valueColor: pumpStatus > 0 ? Colors.green : Colors.grey,
+                Icons.settings,
+                isDarkMode,
+                statusColor: pumpStatus > 0 ? Colors.green : Colors.grey,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildMetricCard(
+                context,
+                'Total Water Used',
+                '${usedTotal.toStringAsFixed(0)}L',
+                Icons.water_drop,
+                isDarkMode,
               ),
             ),
           ],
         ),
         const SizedBox(height: 12),
 
-        // Data Grid - Row 3: Inflow & Max Inflow
         Row(
           children: [
             Expanded(
-              child: _buildDataCard(
+              child: _buildMetricCard(
                 context,
                 'Inflow',
-                '${currInflow.toStringAsFixed(1)}Lpm',
+                '${currInflow.toStringAsFixed(1)} L/min',
+                Icons.water,
+                isDarkMode,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _buildDataCard(
+              child: _buildMetricCard(
                 context,
                 'Max Inflow',
-                '${maxInflow.toStringAsFixed(1)}Lpm',
+                '${maxInflow.toStringAsFixed(1)} L/min',
+                Icons.water_damage,
+                isDarkMode,
               ),
             ),
           ],
         ),
         const SizedBox(height: 40),
 
-        // Pump Control Button
-        Center(
-          child: _buildPumpControlButton(
-            context,
-            pumpSwitch as bool,
-            deviceProvider,
-            device,
-          ),
-        ),
-        const SizedBox(height: 24),
+        // Large Circular Pump Control Button
+        _buildPumpControlButton(context, device, pumpSwitch, isDarkMode),
+        const SizedBox(height: 20),
       ],
     );
   }
 
-  Widget _buildHeader(BuildContext context, Device device, bool isOnline) {
-    return Consumer<OfflineProvider>(
-      builder: (context, offlineProvider, child) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                // Back button
-                IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                const SizedBox(width: 8),
+  /// Modern header with logo, title, device ID, LIVE badge, theme toggle, and settings
+  Widget _buildModernHeader(BuildContext context, Device device, bool isOnline, bool isDarkMode) {
+    final colorScheme = Theme.of(context).colorScheme;
 
-                // Device ID and status
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Device ID:',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              device.deviceId,
-                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isOnline ? Colors.green : Colors.grey,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (isOnline) ...[
-                                  FadeTransition(
-                                    opacity: _pulseAnimation,
-                                    child: Container(
-                                      width: 6,
-                                      height: 6,
-                                      decoration: const BoxDecoration(
-                                        color: Colors.white,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                ],
-                                Text(
-                                  isOnline ? 'LIVE' : 'Offline',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+    return Row(
+      children: [
+        // Logo
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: colorScheme.primary.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            Icons.water_drop,
+            color: colorScheme.primary,
+            size: 28,
+          ),
+        ),
+        const SizedBox(width: 12),
 
-                // Sync button (if pending changes)
-                if (offlineProvider.pendingChanges > 0)
-                  IconButton(
-                    icon: Stack(
-                      children: [
-                        const Icon(Icons.sync),
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          child: Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              color: Colors.orange,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            constraints: const BoxConstraints(
-                              minWidth: 12,
-                              minHeight: 12,
-                            ),
-                            child: Text(
-                              '${offlineProvider.pendingChanges}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 8,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                      ],
+        // Title and Device ID
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'AquaFlow',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.5,
                     ),
-                    onPressed: offlineProvider.isSyncing
-                        ? null
-                        : () async {
-                            await offlineProvider.syncPendingChanges();
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    offlineProvider.lastSyncResult?.allSynced == true
-                                        ? 'Synced ${offlineProvider.lastSyncResult!.synced} change(s)'
-                                        : 'Sync completed with ${offlineProvider.lastSyncResult?.failed ?? 0} failure(s)',
-                                  ),
-                                  backgroundColor: offlineProvider.lastSyncResult?.hasFailures == true
-                                      ? Colors.orange
-                                      : Colors.green,
-                                ),
-                              );
-                            }
-                          },
-                    tooltip: 'Sync ${offlineProvider.pendingChanges} pending change(s)',
-                  ),
+              ),
+              Text(
+                device.name ?? device.id,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurface.withOpacity(0.7),
+                    ),
+              ),
+            ],
+          ),
+        ),
 
-                // Info button
-                IconButton(
-                  icon: const Icon(Icons.info_outline),
-                  onPressed: () => _showDeviceInfoDialog(context, device),
-                ),
-
-                // Settings button
-                IconButton(
-                  icon: const Icon(Icons.settings),
-                  onPressed: () async {
-                    // Show loading dialog
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (context) => const Center(
-                        child: Card(
-                          child: Padding(
-                            padding: EdgeInsets.all(24.0),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                CircularProgressIndicator(),
-                                SizedBox(height: 16),
-                                Text('Fetching device configuration...'),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-
-                    try {
-                      // Fetch fresh device data from server
-                      final deviceProvider = context.read<DeviceProvider>();
-                      await deviceProvider.selectDevice(device.id);
-
-                      // Close loading dialog
-                      if (mounted) Navigator.of(context).pop();
-
-                      // Get the updated device
-                      final updatedDevice = deviceProvider.selectedDevice;
-
-                      if (updatedDevice != null && mounted) {
-                        // Navigate to config screen with fresh data
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => DeviceConfigEditScreen(device: updatedDevice),
-                          ),
-                        );
-                      }
-                    } catch (e) {
-                      // Close loading dialog
-                      if (mounted) Navigator.of(context).pop();
-
-                      // Show error message
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Failed to fetch device config: $e'),
-                            backgroundColor: Colors.red,
-                            duration: const Duration(seconds: 3),
-                          ),
-                        );
-                      }
-                    }
-                  },
-                ),
-              ],
-            ),
-
-            // Network status indicator
-            if (!offlineProvider.isOnline)
-              Container(
-                margin: const EdgeInsets.only(top: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        // LIVE Badge
+        if (isOnline)
+          AnimatedBuilder(
+            animation: _pulseAnimation,
+            builder: (context, child) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange),
+                  color: Colors.green.withOpacity(0.2 + (_pulseAnimation.value * 0.2)),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.green.withOpacity(_pulseAnimation.value),
+                    width: 2,
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.cloud_off, size: 16, color: Colors.orange),
-                    const SizedBox(width: 8),
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.green.withOpacity(_pulseAnimation.value),
+                            blurRadius: 8,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
                     Text(
-                      offlineProvider.pendingChanges > 0
-                          ? 'Offline - ${offlineProvider.pendingChanges} change(s) pending'
-                          : 'Offline mode - using cached data',
-                      style: const TextStyle(
-                        color: Colors.orange,
+                      'LIVE',
+                      style: TextStyle(
+                        color: Colors.green,
+                        fontWeight: FontWeight.bold,
                         fontSize: 12,
-                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
                 ),
+              );
+            },
+          ),
+        const SizedBox(width: 8),
+
+        // Theme Toggle
+        const ThemeToggle(),
+        const SizedBox(width: 4),
+
+        // Settings Button
+        IconButton(
+          icon: const Icon(Icons.settings),
+          onPressed: () async {
+            // Fetch fresh config from server
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => const Center(
+                child: Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text('Fetching device configuration...'),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-          ],
-        );
-      },
+            );
+
+            try {
+              final deviceProvider = context.read<DeviceProvider>();
+              await deviceProvider.selectDevice(device.id);
+
+              if (mounted) Navigator.of(context).pop();
+
+              final updatedDevice = deviceProvider.selectedDevice;
+
+              if (updatedDevice != null && mounted) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DeviceConfigEditScreen(device: updatedDevice),
+                  ),
+                );
+              }
+            } catch (e) {
+              if (mounted) Navigator.of(context).pop();
+
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to fetch device config: $e'),
+                    backgroundColor: Colors.red,
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+              }
+            }
+          },
+        ),
+      ],
     );
   }
 
-  Widget _buildWaterLevelIndicator(
+  /// Build theme-aware metric card
+  Widget _buildMetricCard(
     BuildContext context,
-    double waterLevel,
-    double upperThreshold,
-    double lowerThreshold,
-  ) {
-    // Calculate percentage (0-100)
-    final percentage = waterLevel.clamp(0.0, 100.0);
+    String label,
+    String value,
+    IconData icon,
+    bool isDarkMode, {
+    double? progress,
+    Color? statusColor,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final cardColor = isDarkMode ? const Color(0xFF1F2937) : const Color(0xFFFFFFFF);
+    final borderColor = isDarkMode ? const Color(0xFF374151) : const Color(0xFFE5E7EB);
 
-    return Center(
-      child: SizedBox(
-        width: 100,
-        height: 250,
-        child: Stack(
-          alignment: Alignment.bottomCenter,
-          children: [
-            // Container border
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outline,
-                  width: 2,
-                ),
-                borderRadius: BorderRadius.circular(8),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                icon,
+                color: statusColor ?? colorScheme.primary,
+                size: 24,
               ),
-            ),
-            // Water fill
-            FractionallySizedBox(
-              heightFactor: percentage / 100,
-              alignment: Alignment.bottomCenter,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _getWaterLevelColor(percentage, upperThreshold, lowerThreshold),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-              ),
-            ),
-            // Percentage text
-            Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(8),
-                ),
+              const SizedBox(width: 12),
+              Expanded(
                 child: Text(
-                  '${percentage.toStringAsFixed(0)}%',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
+                  label,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurface.withOpacity(0.7),
                       ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Color _getWaterLevelColor(double level, double upper, double lower) {
-    if (level >= upper) {
-      return Colors.green.shade400;
-    } else if (level <= lower) {
-      return Colors.red.shade400;
-    } else {
-      return Colors.blue.shade400;
-    }
-  }
-
-  Widget _buildDataCard(
-    BuildContext context,
-    String label,
-    String value, {
-    Color? valueColor,
-  }) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: valueColor,
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPumpControlButton(
-    BuildContext context,
-    bool pumpSwitch,
-    DeviceProvider deviceProvider,
-    Device device,
-  ) {
-    return SizedBox(
-      width: 200,
-      height: 200,
-      child: Material(
-        color: pumpSwitch ? Colors.green : Colors.grey.shade300,
-        borderRadius: BorderRadius.circular(16),
-        elevation: 4,
-        child: InkWell(
-          onTap: _isTogglingPump
-              ? null
-              : () async {
-                  setState(() => _isTogglingPump = true);
-
-                  final offlineProvider = context.read<OfflineProvider>();
-                  final localIp = device.deviceConfig['ip_address']?.value;
-
-                  try {
-                    // Use offline service (tries local first, then server)
-                    await offlineProvider.service.updateControl(
-                      device.id,
-                      'pumpSwitch',
-                      !pumpSwitch,
-                      'boolean',
-                      localIp: localIp?.toString(),
-                    );
-
-                    // Immediately refresh to get updated state
-                    await deviceProvider.selectDevice(device.id);
-
-                    setState(() => _isTogglingPump = false);
-
-                    // Show sync status if offline
-                    if (!offlineProvider.isOnline && mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Command queued for sync (offline mode)'),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    }
-                  } catch (e) {
-                    setState(() => _isTogglingPump = false);
-
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Failed to toggle pump: $e'),
-                          backgroundColor: Theme.of(context).colorScheme.error,
-                        ),
-                      );
-                    }
-                  }
-                },
-          borderRadius: BorderRadius.circular(16),
-          child: Center(
-            child: _isTogglingPump
-                ? CircularProgressIndicator(
-                    color: pumpSwitch ? Colors.white : Colors.grey.shade700,
-                  )
-                : Text(
-                    pumpSwitch ? 'ON' : 'OFF',
-                    style: TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                      color: pumpSwitch ? Colors.white : Colors.grey.shade700,
-                    ),
-                  ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showDeviceInfoDialog(BuildContext context, Device device) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Device Information'),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildInfoRow('Device ID', device.deviceId),
-              _buildInfoRow('Name', device.name),
-              if (device.projectName != null)
-                _buildInfoRow('Project', device.projectName!),
-              _buildInfoRow('Status', device.isActive ? 'Online' : 'Offline'),
-              _buildInfoRow('Last Seen', device.getStatusText()),
-              if (device.deviceConfig['ip_address']?.value != null &&
-                  device.deviceConfig['ip_address']!.value.toString().isNotEmpty)
-                _buildInfoRow(
-                  'Local IP',
-                  device.deviceConfig['ip_address']!.value.toString(),
-                ),
-              const SizedBox(height: 16),
-              Text(
-                'Tank Configuration',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              if (device.deviceConfig['tankShape'] != null)
-                _buildInfoRow(
-                  'Tank Shape',
-                  device.deviceConfig['tankShape']!.value.toString(),
-                ),
-              if (device.deviceConfig['tankHeight'] != null)
-                _buildInfoRow(
-                  'Tank Height',
-                  '${device.deviceConfig['tankHeight']!.value} cm',
-                ),
-              if (device.deviceConfig['tankWidth'] != null)
-                _buildInfoRow(
-                  'Tank Width',
-                  '${device.deviceConfig['tankWidth']!.value} cm',
-                ),
             ],
           ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: statusColor ?? colorScheme.onSurface,
+                ),
+          ),
+          if (progress != null) ...[
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: progress,
+                backgroundColor: borderColor,
+                valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+                minHeight: 6,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Build large circular pump control button
+  Widget _buildPumpControlButton(
+    BuildContext context,
+    Device device,
+    bool pumpSwitch,
+    bool isDarkMode,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Center(
+      child: GestureDetector(
+        onTap: _isTogglingPump
+            ? null
+            : () async {
+                setState(() => _isTogglingPump = true);
+
+                final offlineProvider = context.read<OfflineProvider>();
+                final localIp = device.deviceConfig['ip_address']?.value;
+
+                try {
+                  await offlineProvider.service.updateControl(
+                    device.id,
+                    'pumpSwitch',
+                    !pumpSwitch,
+                    'boolean',
+                    localIp: localIp?.toString(),
+                  );
+
+                  if (!offlineProvider.isOnline && mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Command queued for sync (offline mode)'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to toggle pump: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                } finally {
+                  if (mounted) {
+                    setState(() => _isTogglingPump = false);
+                  }
+                }
+              },
+        child: Container(
+          width: 180,
+          height: 180,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: pumpSwitch ? colorScheme.primary : colorScheme.surface,
+            border: Border.all(
+              color: pumpSwitch ? colorScheme.primary : colorScheme.outline,
+              width: 4,
+            ),
+            boxShadow: pumpSwitch && isDarkMode
+                ? [
+                    BoxShadow(
+                      color: colorScheme.primary.withOpacity(0.5),
+                      blurRadius: 30,
+                      spreadRadius: 5,
+                    ),
+                  ]
+                : null,
+          ),
+          child: _isTogglingPump
+              ? Center(
+                  child: CircularProgressIndicator(
+                    color: pumpSwitch ? Colors.black : colorScheme.primary,
+                  ),
+                )
+              : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      pumpSwitch ? Icons.power_settings_new : Icons.power_off,
+                      size: 60,
+                      color: pumpSwitch ? Colors.black : colorScheme.primary,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      pumpSwitch ? 'PUMP ON' : 'PUMP OFF',
+                      style: TextTheme().titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: pumpSwitch ? Colors.black : colorScheme.onSurface,
+                          ),
+                    ),
+                  ],
+                ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
       ),
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              '$label:',
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(color: Colors.grey),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Helper method to safely convert dynamic values to double
+  /// Helper to safely convert to double
   double _toDouble(dynamic value) {
     if (value == null) return 0.0;
     if (value is double) return value;
     if (value is int) return value.toDouble();
-    if (value is num) return value.toDouble();
-    // Try to parse string
-    if (value is String) {
-      return double.tryParse(value) ?? 0.0;
-    }
+    if (value is String) return double.tryParse(value) ?? 0.0;
     return 0.0;
   }
 }
