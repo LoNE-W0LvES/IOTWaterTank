@@ -487,6 +487,7 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
                 setState(() => _isTogglingPump = true);
 
                 final offlineProvider = context.read<OfflineProvider>();
+                final deviceProvider = context.read<DeviceProvider>();
                 final localIp = device.deviceConfig['ip_address']?.value;
 
                 try {
@@ -497,6 +498,23 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
                     'boolean',
                     localIp: localIp?.toString(),
                   );
+
+                  // Immediately fetch updated device data for instant UI update
+                  try {
+                    final updatedDevice = await offlineProvider.service.getDeviceLiveData(
+                      device.id,
+                      localIp: localIp?.toString(),
+                    );
+                    deviceProvider.setSelectedDevice(updatedDevice);
+
+                    if (mounted) {
+                      setState(() {
+                        _lastUpdate = DateTime.now();
+                      });
+                    }
+                  } catch (e) {
+                    AppConfig.deviceLog('Failed to fetch updated data after pump toggle: $e');
+                  }
 
                   if (!offlineProvider.isOnline && mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
