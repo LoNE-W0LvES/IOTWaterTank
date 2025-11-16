@@ -9,6 +9,7 @@ import '../widgets/loading_widget.dart';
 import '../widgets/error_widget.dart';
 import '../widgets/circular_water_level.dart';
 import '../widgets/theme_toggle.dart';
+import '../widgets/threshold_range_card.dart';
 import 'device_config_edit_screen.dart';
 
 /// Redesigned Water Tank Control Screen with theme support
@@ -201,30 +202,12 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
         ),
         const SizedBox(height: 40),
 
-        // Metrics Grid - Thresholds side by side
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricCard(
-                context,
-                'Upper Threshold',
-                '${upperThreshold.toStringAsFixed(0)}%',
-                Icons.arrow_upward,
-                isDarkMode,
-                progress: upperThreshold / 100,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildMetricCard(
-                context,
-                'Lower Threshold',
-                '${lowerThreshold.toStringAsFixed(0)}%',
-                Icons.arrow_downward,
-                isDarkMode,
-              ),
-            ),
-          ],
+        // Threshold Range Card with animated bar indicator
+        ThresholdRangeCard(
+          waterLevel: waterLevel,
+          lowerThreshold: lowerThreshold,
+          upperThreshold: upperThreshold,
+          isDarkMode: isDarkMode,
         ),
         const SizedBox(height: 12),
 
