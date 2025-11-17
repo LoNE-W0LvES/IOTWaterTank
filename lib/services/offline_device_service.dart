@@ -217,6 +217,7 @@ class OfflineDeviceService {
           'telemetryData': telemetryData,
           'controlData': controlData,
           'deviceConfig': configData,
+          'localIp': localIp, // Preserve local IP for future requests
         };
 
         return Device.fromJson(deviceData);
