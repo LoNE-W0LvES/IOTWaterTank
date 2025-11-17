@@ -193,15 +193,23 @@ class OfflineDeviceService {
 
       if (telemetryResponse.statusCode == 200 && controlResponse.statusCode == 200) {
         // Merge telemetry and control data into a device object
-        final deviceData = {
+        // Explicitly cast response data to Map<String, dynamic>
+        final telemetryData = telemetryResponse.data is Map
+            ? Map<String, dynamic>.from(telemetryResponse.data as Map)
+            : <String, dynamic>{};
+        final controlData = controlResponse.data is Map
+            ? Map<String, dynamic>.from(controlResponse.data as Map)
+            : <String, dynamic>{};
+
+        final deviceData = <String, dynamic>{
           'id': deviceId,
           'name': deviceId, // Will be overridden by cached data if available
           'deviceId': deviceId,
           'projectId': AppConfig.projectId,
           'isActive': true,
-          'telemetryData': telemetryResponse.data ?? {},
-          'controlData': controlResponse.data ?? {},
-          'deviceConfig': {}, // Will be filled from cache
+          'telemetryData': telemetryData,
+          'controlData': controlData,
+          'deviceConfig': <String, dynamic>{}, // Will be filled from cache
         };
 
         return Device.fromJson(deviceData);
