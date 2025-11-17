@@ -182,23 +182,30 @@ class OfflineDeviceService {
   Future<Device> _getDeviceFromLocal(String deviceId, String localIp) async {
     if (_localDio == null) throw Exception('Service not initialized');
 
-    // Fetch telemetry and control data from device's local endpoints
+    // Fetch telemetry, control, and config data from device's local endpoints
     final telemetryUrl = 'http://$localIp/$deviceId/telemetry';
     final controlUrl = 'http://$localIp/$deviceId/control';
+    final configUrl = 'http://$localIp/$deviceId/config';
 
     try {
-      // Fetch both endpoints
+      // Fetch all three endpoints
       final telemetryResponse = await _localDio!.get(telemetryUrl);
       final controlResponse = await _localDio!.get(controlUrl);
+      final configResponse = await _localDio!.get(configUrl);
 
-      if (telemetryResponse.statusCode == 200 && controlResponse.statusCode == 200) {
-        // Merge telemetry and control data into a device object
+      if (telemetryResponse.statusCode == 200 &&
+          controlResponse.statusCode == 200 &&
+          configResponse.statusCode == 200) {
+        // Merge telemetry, control, and config data into a device object
         // Explicitly cast response data to Map<String, dynamic>
         final telemetryData = telemetryResponse.data is Map
             ? Map<String, dynamic>.from(telemetryResponse.data as Map)
             : <String, dynamic>{};
         final controlData = controlResponse.data is Map
             ? Map<String, dynamic>.from(controlResponse.data as Map)
+            : <String, dynamic>{};
+        final configData = configResponse.data is Map
+            ? Map<String, dynamic>.from(configResponse.data as Map)
             : <String, dynamic>{};
 
         final deviceData = <String, dynamic>{
@@ -209,13 +216,13 @@ class OfflineDeviceService {
           'isActive': true,
           'telemetryData': telemetryData,
           'controlData': controlData,
-          'deviceConfig': <String, dynamic>{}, // Will be filled from cache
+          'deviceConfig': configData,
         };
 
         return Device.fromJson(deviceData);
       } else {
         throw ApiException(
-          message: 'Local device returned status: telemetry=${telemetryResponse.statusCode}, control=${controlResponse.statusCode}',
+          message: 'Local device returned status: telemetry=${telemetryResponse.statusCode}, control=${controlResponse.statusCode}, config=${configResponse.statusCode}',
         );
       }
     } catch (e) {
