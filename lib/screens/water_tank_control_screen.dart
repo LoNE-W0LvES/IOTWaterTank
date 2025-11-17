@@ -56,7 +56,8 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
 
     if (deviceProvider.selectedDevice != null) {
       final device = deviceProvider.selectedDevice!;
-      final localIp = device.deviceConfig['ip_address']?.value?.toString();
+      // Get local IP from device model (stored for offline mode)
+      final localIp = device.localIp;
 
       if (localIp != null && localIp.isNotEmpty) {
         await timestampProvider.syncDevice(
@@ -82,7 +83,8 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
 
       if (deviceProvider.selectedDevice != null && !deviceProvider.isLoading) {
         try {
-          final localIp = deviceProvider.selectedDevice!.deviceConfig['ip_address']?.value;
+          // Get local IP from device model (stored for offline mode)
+          final localIp = deviceProvider.selectedDevice!.localIp;
           final deviceId = deviceProvider.selectedDevice!.id;
 
           // Periodic timestamp sync (every hour)
@@ -481,7 +483,8 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
 
                 final offlineProvider = context.read<OfflineProvider>();
                 final deviceProvider = context.read<DeviceProvider>();
-                final localIp = device.deviceConfig['ip_address']?.value;
+                // Get local IP from device model (stored for offline mode)
+                final localIp = device.localIp;
 
                 try {
                   await offlineProvider.service.updateControl(
