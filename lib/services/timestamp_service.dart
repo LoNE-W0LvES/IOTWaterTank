@@ -27,7 +27,7 @@ class TimestampService {
       }
       return null;
     } catch (e) {
-      AppConfig.debugLog('Failed to get server timestamp: $e');
+      AppConfig.deviceLog('Failed to get server timestamp: $e');
       return null;
     }
   }
@@ -39,7 +39,7 @@ class TimestampService {
     String? localIp,
   }) async {
     if (localIp == null || localIp.isEmpty) {
-      AppConfig.debugLog('Device local IP not available for timestamp sync');
+      AppConfig.deviceLog('Device local IP not available for timestamp sync');
       return null;
     }
 
@@ -58,7 +58,7 @@ class TimestampService {
       }
       return null;
     } catch (e) {
-      AppConfig.debugLog('Failed to get device timestamp from $localIp: $e');
+      AppConfig.deviceLog('Failed to get device timestamp from $localIp: $e');
       return null;
     }
   }
@@ -71,7 +71,7 @@ class TimestampService {
     String? localIp,
   }) async {
     if (localIp == null || localIp.isEmpty) {
-      AppConfig.debugLog('Cannot sync device timestamp: No local IP');
+      AppConfig.deviceLog('Cannot sync device timestamp: No local IP');
       return null;
     }
 
@@ -80,11 +80,11 @@ class TimestampService {
       final serverTimestamp = await getServerTimestamp(deviceId);
 
       if (serverTimestamp != null) {
-        AppConfig.debugLog(
+        AppConfig.deviceLog(
           'Server timestamp obtained: ${serverTimestamp.serverTime}',
         );
       } else {
-        AppConfig.debugLog('Server timestamp unavailable, device will use millis()');
+        AppConfig.deviceLog('Server timestamp unavailable, device will use millis()');
       }
 
       // Step 2: Get device's current timestamp state
@@ -94,7 +94,7 @@ class TimestampService {
       );
 
       if (deviceTimestamp != null) {
-        AppConfig.debugLog(
+        AppConfig.deviceLog(
           'Device timestamp: ${deviceTimestamp.timestamp}, '
           'source: ${deviceTimestamp.source}, '
           'drift: ${deviceTimestamp.drift}ms',
@@ -102,7 +102,7 @@ class TimestampService {
 
         // Check if device needs to sync with server
         if (!deviceTimestamp.isServerSynced && serverTimestamp != null) {
-          AppConfig.debugLog(
+          AppConfig.deviceLog(
             'Device using local time, server available - device should sync',
           );
         }
@@ -110,7 +110,7 @@ class TimestampService {
 
       return deviceTimestamp;
     } catch (e) {
-      AppConfig.debugLog('Error syncing device timestamp: $e');
+      AppConfig.deviceLog('Error syncing device timestamp: $e');
       return null;
     }
   }

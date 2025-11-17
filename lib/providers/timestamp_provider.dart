@@ -42,7 +42,7 @@ class TimestampProvider with ChangeNotifier {
     String? localIp,
   }) async {
     if (_isSyncing) {
-      AppConfig.debugLog('Timestamp sync already in progress');
+      AppConfig.deviceLog('Timestamp sync already in progress');
       return false;
     }
 
@@ -54,7 +54,7 @@ class TimestampProvider with ChangeNotifier {
       final serverTimestamp = await _timestampService.getServerTimestamp(deviceId);
       if (serverTimestamp != null) {
         _lastServerSync = serverTimestamp;
-        AppConfig.debugLog('Server timestamp synced: ${serverTimestamp.serverTime}');
+        AppConfig.deviceLog('Server timestamp synced: ${serverTimestamp.serverTime}');
       }
 
       // Sync with device if local IP available
@@ -68,7 +68,7 @@ class TimestampProvider with ChangeNotifier {
           _lastDeviceSync = deviceSync;
           _lastSyncTime = DateTime.now();
 
-          AppConfig.debugLog(
+          AppConfig.deviceLog(
             'Device timestamp synced: ${deviceSync.timestamp}, '
             'source: ${deviceSync.source}, drift: ${deviceSync.drift}ms',
           );
@@ -83,7 +83,7 @@ class TimestampProvider with ChangeNotifier {
       notifyListeners();
       return serverTimestamp != null;
     } catch (e) {
-      AppConfig.debugLog('Error syncing timestamp: $e');
+      AppConfig.deviceLog('Error syncing timestamp: $e');
       _isSyncing = false;
       notifyListeners();
       return false;
