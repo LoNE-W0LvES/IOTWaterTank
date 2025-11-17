@@ -4,8 +4,20 @@ import '../config/app_config.dart';
 import 'api_client.dart';
 
 /// Service for timestamp synchronization with server and device
+///
+/// Synchronization Flow:
+/// 1. App → Server: Get server timestamp (GET /api/timeSync?deviceId={id})
+/// 2. App → Device: Get device timestamp (GET http://{ip}/{id}/timestamp)
+/// 3. App: Check drift - if > 5 seconds, send correction
+/// 4. App → Device: Send corrected timestamp (POST http://{ip}/{id}/timestamp)
+/// 5. Device → Server: Device syncs data and timestamp with server (heartbeat)
+/// 6. App → Device: Verify correction (GET http://{ip}/{id}/timestamp)
+///
+/// This ensures device time stays synchronized with server time for accurate
+/// telemetry timestamps and data consistency.
 class TimestampService {
   static const Duration _timeout = Duration(seconds: 5);
+  static const int _maxDriftMs = 5000; // 5 seconds max acceptable drift
   final ApiClient _apiClient = ApiClient();
 
   /// Get current timestamp from server
@@ -63,8 +75,48 @@ class TimestampService {
     }
   }
 
-  /// Sync timestamp with device
-  /// First tries to get server timestamp, then syncs device
+  /// Send corrected timestamp to device via local IP
+  /// POST http://{device_ip}/{device_id}/timestamp
+  /// Body: { "timestamp": unixTimestampInMs }
+  Future<bool> sendTimestampToDevice(
+    String deviceId,
+    int timestamp, {
+    String? localIp,
+  }) async {
+    if (localIp == null || localIp.isEmpty) {
+      AppConfig.deviceLog('Device local IP not available for sending timestamp');
+      return false;
+    }
+
+    try {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'http://$localIp',
+        connectTimeout: _timeout,
+        receiveTimeout: _timeout,
+        sendTimeout: _timeout,
+      ));
+
+      final response = await dio.post(
+        '/$deviceId/timestamp',
+        data: {'timestamp': timestamp},
+      );
+
+      if (response.statusCode == 200) {
+        AppConfig.deviceLog('Timestamp sent to device: $timestamp');
+        return true;
+      }
+      return false;
+    } catch (e) {
+      AppConfig.deviceLog('Failed to send timestamp to device at $localIp: $e');
+      return false;
+    }
+  }
+
+  /// Sync timestamp with device and correct if drift is too large
+  /// 1. Get server timestamp
+  /// 2. Get device timestamp
+  /// 3. Check drift - if > maxDrift, send correction
+  /// 4. Device will then sync with server
   /// Returns the timestamp sync response from device
   Future<TimestampSyncResponse?> syncDeviceTimestamp(
     String deviceId, {
@@ -100,11 +152,54 @@ class TimestampService {
           'drift: ${deviceTimestamp.drift}ms',
         );
 
-        // Check if device needs to sync with server
-        if (!deviceTimestamp.isServerSynced && serverTimestamp != null) {
-          AppConfig.deviceLog(
-            'Device using local time, server available - device should sync',
+        // Step 3: Check drift and correct if needed
+        if (serverTimestamp != null) {
+          final currentDrift = calculateDrift(
+            serverTimestamp: serverTimestamp.serverTime,
+            deviceTimestamp: deviceTimestamp.timestamp,
           );
+
+          final driftAbs = currentDrift.abs();
+
+          AppConfig.deviceLog('Calculated drift: ${currentDrift}ms (abs: ${driftAbs}ms)');
+
+          // If drift is too large, send corrected timestamp to device
+          if (driftAbs > _maxDriftMs) {
+            AppConfig.deviceLog(
+              'Drift exceeds threshold ($_maxDriftMs ms). Sending correction to device...',
+            );
+
+            final corrected = await sendTimestampToDevice(
+              deviceId,
+              serverTimestamp.serverTime,
+              localIp: localIp,
+            );
+
+            if (corrected) {
+              AppConfig.deviceLog('Timestamp correction sent. Waiting for device to sync with server...');
+
+              // Wait a bit for device to process and sync with server
+              await Future.delayed(const Duration(seconds: 2));
+
+              // Get updated timestamp from device after correction
+              final updatedTimestamp = await getDeviceTimestamp(
+                deviceId,
+                localIp: localIp,
+              );
+
+              if (updatedTimestamp != null) {
+                AppConfig.deviceLog(
+                  'Device timestamp after correction: ${updatedTimestamp.timestamp}, '
+                  'source: ${updatedTimestamp.source}, drift: ${updatedTimestamp.drift}ms',
+                );
+                return updatedTimestamp;
+              }
+            } else {
+              AppConfig.deviceLog('Failed to send timestamp correction to device');
+            }
+          } else {
+            AppConfig.deviceLog('Drift within acceptable range');
+          }
         }
       }
 
