@@ -35,6 +35,7 @@ class AuthProvider with ChangeNotifier {
   Future<bool> signIn({
     required String email,
     required String password,
+    bool keepLoggedIn = false,
   }) async {
     _setLoading(true);
     _setError(null);
@@ -43,6 +44,39 @@ class AuthProvider with ChangeNotifier {
       _userData = await _authService.signIn(
         email: email,
         password: password,
+        keepLoggedIn: keepLoggedIn,
+      );
+      _isAuthenticated = true;
+      _setLoading(false);
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _setError(e.message);
+      _isAuthenticated = false;
+      _setLoading(false);
+      return false;
+    } catch (e) {
+      _setError('An unexpected error occurred');
+      _isAuthenticated = false;
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  /// Sign up with email and password
+  Future<bool> signUp({
+    required String email,
+    required String password,
+    required String name,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      _userData = await _authService.signUp(
+        email: email,
+        password: password,
+        name: name,
       );
       _isAuthenticated = true;
       _setLoading(false);
@@ -102,5 +136,31 @@ class AuthProvider with ChangeNotifier {
   void _setError(String? error) {
     _error = error;
     notifyListeners();
+  }
+
+  /// Save dashboard credentials
+  Future<void> saveDashboardCredentials({
+    required String username,
+    required String password,
+  }) async {
+    await _authService.saveDashboardCredentials(
+      username: username,
+      password: password,
+    );
+  }
+
+  /// Get dashboard username
+  Future<String?> getDashboardUsername() async {
+    return await _authService.getDashboardUsername();
+  }
+
+  /// Get dashboard password
+  Future<String?> getDashboardPassword() async {
+    return await _authService.getDashboardPassword();
+  }
+
+  /// Clear dashboard credentials
+  Future<void> clearDashboardCredentials() async {
+    await _authService.clearDashboardCredentials();
   }
 }

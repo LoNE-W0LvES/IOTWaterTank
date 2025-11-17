@@ -8,12 +8,16 @@ class AppConfig {
 
   // API Endpoints
   static const String signInEndpoint = '$apiPrefix/auth/sign-in/email';
+  static const String signUpEndpoint = '$apiPrefix/auth/sign-up/email';
   static const String signOutEndpoint = '$apiPrefix/auth/sign-out';
   static const String devicesEndpoint = '$apiPrefix/devices';
 
   // Session Configuration
   static const String sessionCookieName = 'better-auth.session_token';
   static const String sessionStorageKey = 'user_session';
+  static const String keepLoggedInKey = 'keep_logged_in';
+  static const String dashboardUsernameKey = 'dashboard_username';
+  static const String dashboardPasswordKey = 'dashboard_password';
 
   // App Configuration
   static const String appName = 'IoT Water Tank';

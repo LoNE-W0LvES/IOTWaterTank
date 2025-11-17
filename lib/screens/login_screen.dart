@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../config/app_config.dart';
+import 'signup_screen.dart';
 
 /// Login screen with email/password authentication
 class LoginScreen extends StatefulWidget {
@@ -16,6 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _keepLoggedIn = false;
 
   @override
   void dispose() {
@@ -32,6 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final success = await authProvider.signIn(
       email: _emailController.text.trim(),
       password: _passwordController.text,
+      keepLoggedIn: _keepLoggedIn,
     );
 
     if (success && mounted) {
@@ -216,7 +219,35 @@ class _LoginScreenState extends State<LoginScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 16),
+
+                      // Keep me logged in checkbox
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: _keepLoggedIn,
+                            onChanged: (value) {
+                              setState(() {
+                                _keepLoggedIn = value ?? false;
+                              });
+                            },
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _keepLoggedIn = !_keepLoggedIn;
+                              });
+                            },
+                            child: Text(
+                              'Keep me logged in',
+                              style: textTheme.bodyMedium?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
 
                       // Error Message
                       Consumer<AuthProvider>(
@@ -294,6 +325,36 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
 
                     const SizedBox(height: 24),
+
+                    // Don't have account link
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "Don't have an account? ",
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const SignupScreen(),
+                              ),
+                            );
+                          },
+                          child: const Text(
+                            'Sign Up',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 8),
 
                     // Version Info
                     Text(

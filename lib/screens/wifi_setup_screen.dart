@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/wifi_setup_provider.dart';
+import '../providers/auth_provider.dart';
 import '../widgets/network_list_tile.dart';
 
 class WiFiSetupScreen extends StatefulWidget {
@@ -32,7 +33,22 @@ class _WiFiSetupScreenState extends State<WiFiSetupScreen> {
       provider.reset();
       // Automatically check device connection
       _checkConnection();
+      // Load saved dashboard credentials
+      _loadSavedCredentials();
     });
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final authProvider = context.read<AuthProvider>();
+    final username = await authProvider.getDashboardUsername();
+    final password = await authProvider.getDashboardPassword();
+
+    if (username != null && username.isNotEmpty) {
+      _dashboardUsernameController.text = username;
+    }
+    if (password != null && password.isNotEmpty) {
+      _dashboardPasswordController.text = password;
+    }
   }
 
   Future<void> _checkConnection() async {
@@ -56,6 +72,7 @@ class _WiFiSetupScreenState extends State<WiFiSetupScreen> {
 
   Future<void> _saveCredentials() async {
     final provider = context.read<WiFiSetupProvider>();
+    final authProvider = context.read<AuthProvider>();
 
     // Update provider with text field values
     provider.setSelectedSSID(_ssidController.text);
@@ -66,6 +83,16 @@ class _WiFiSetupScreenState extends State<WiFiSetupScreen> {
     final success = await provider.saveWiFiCredentials(widget.deviceId);
 
     if (success && mounted) {
+      // Save dashboard credentials for future autofill
+      final dashUsername = _dashboardUsernameController.text.trim();
+      final dashPassword = _dashboardPasswordController.text.trim();
+      if (dashUsername.isNotEmpty && dashPassword.isNotEmpty) {
+        await authProvider.saveDashboardCredentials(
+          username: dashUsername,
+          password: dashPassword,
+        );
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('WiFi credentials saved! Device is connecting...'),

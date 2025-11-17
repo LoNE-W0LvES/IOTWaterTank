@@ -19,6 +19,7 @@ class AuthService {
   Future<Map<String, dynamic>> signIn({
     required String email,
     required String password,
+    bool keepLoggedIn = false,
   }) async {
     try {
       final response = await _apiClient.post(
@@ -41,6 +42,9 @@ class AuthService {
           // Save session state
           await _saveSessionState(true);
 
+          // Save keep logged in preference
+          await _saveKeepLoggedIn(keepLoggedIn);
+
           // Return user data if available
           final data = response.data;
           if (data is Map<String, dynamic>) {
@@ -51,6 +55,52 @@ class AuthService {
 
       throw ApiException(
         message: 'Login failed. Please check your credentials.',
+        statusCode: response.statusCode,
+      );
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException.fromError(e);
+    }
+  }
+
+  /// Sign up with email and password
+  Future<Map<String, dynamic>> signUp({
+    required String email,
+    required String password,
+    required String name,
+  }) async {
+    try {
+      final response = await _apiClient.post(
+        AppConfig.signUpEndpoint,
+        data: {
+          'email': email,
+          'password': password,
+          'name': name,
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Check if we have the session cookie
+        final cookies = await _apiClient.getCookies(AppConfig.baseUrl);
+        final sessionCookie = cookies.firstWhere(
+          (cookie) => cookie.name == AppConfig.sessionCookieName,
+          orElse: () => Cookie('', ''),
+        );
+
+        if (sessionCookie.value.isNotEmpty) {
+          // Save session state
+          await _saveSessionState(true);
+
+          // Return user data if available
+          final data = response.data;
+          if (data is Map<String, dynamic>) {
+            return data;
+          }
+        }
+      }
+
+      throw ApiException(
+        message: 'Sign up failed. Please try again.',
         statusCode: response.statusCode,
       );
     } catch (e) {
@@ -109,5 +159,46 @@ class AuthService {
   Future<void> clearSession() async {
     await _apiClient.clearCookies();
     await _saveSessionState(false);
+  }
+
+  /// Save keep logged in preference
+  Future<void> _saveKeepLoggedIn(bool keepLoggedIn) async {
+    _prefs ??= await SharedPreferences.getInstance();
+    await _prefs?.setBool(AppConfig.keepLoggedInKey, keepLoggedIn);
+  }
+
+  /// Get keep logged in preference
+  Future<bool> getKeepLoggedIn() async {
+    _prefs ??= await SharedPreferences.getInstance();
+    return _prefs?.getBool(AppConfig.keepLoggedInKey) ?? false;
+  }
+
+  /// Save dashboard credentials
+  Future<void> saveDashboardCredentials({
+    required String username,
+    required String password,
+  }) async {
+    _prefs ??= await SharedPreferences.getInstance();
+    await _prefs?.setString(AppConfig.dashboardUsernameKey, username);
+    await _prefs?.setString(AppConfig.dashboardPasswordKey, password);
+  }
+
+  /// Get dashboard username
+  Future<String?> getDashboardUsername() async {
+    _prefs ??= await SharedPreferences.getInstance();
+    return _prefs?.getString(AppConfig.dashboardUsernameKey);
+  }
+
+  /// Get dashboard password
+  Future<String?> getDashboardPassword() async {
+    _prefs ??= await SharedPreferences.getInstance();
+    return _prefs?.getString(AppConfig.dashboardPasswordKey);
+  }
+
+  /// Clear dashboard credentials
+  Future<void> clearDashboardCredentials() async {
+    _prefs ??= await SharedPreferences.getInstance();
+    await _prefs?.remove(AppConfig.dashboardUsernameKey);
+    await _prefs?.remove(AppConfig.dashboardPasswordKey);
   }
 }
