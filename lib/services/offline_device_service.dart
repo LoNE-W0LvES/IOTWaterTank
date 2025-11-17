@@ -322,6 +322,75 @@ class OfflineDeviceService {
     }
   }
 
+  /// Update device configuration with offline support
+  Future<bool> updateDeviceConfig(
+    String deviceId,
+    Map<String, DeviceConfigParameter> deviceConfig, {
+    String? localIp,
+  }) async {
+    final isOffline = await _offlineModeService.isOfflineModeEnabled();
+
+    // Try local connection first if IP is available
+    if (localIp != null && localIp.isNotEmpty) {
+      try {
+        AppConfig.offlineLog('Attempting to update device config via local IP: $localIp');
+        await _updateConfigLocal(deviceId, deviceConfig, localIp);
+
+        AppConfig.offlineLog('Device config updated via local IP');
+        return true;
+      } catch (e) {
+        AppConfig.offlineLog('Local config update failed: $e');
+
+        // In offline mode, don't fall back to server
+        if (isOffline) {
+          AppConfig.offlineLog('Offline mode: Cannot update config without local connection');
+          throw ApiException(message: 'Device not reachable for config update');
+        }
+
+        AppConfig.offlineLog('Falling back to server...');
+      }
+    }
+
+    // Try server (only if not in offline mode)
+    if (!isOffline) {
+      try {
+        // Use DeviceService for server update
+        throw ApiException(message: 'Use DeviceService.updateDeviceConfig for server updates');
+      } catch (e) {
+        throw ApiException(message: 'Failed to update device config');
+      }
+    } else {
+      // Offline mode with no local IP
+      throw ApiException(message: 'Cannot update config in offline mode without local IP');
+    }
+  }
+
+  /// Update config on local device
+  Future<void> _updateConfigLocal(
+    String deviceId,
+    Map<String, DeviceConfigParameter> deviceConfig,
+    String localIp,
+  ) async {
+    if (_localDio == null) throw Exception('Service not initialized');
+
+    // Use device's local endpoint: POST /{deviceId}/config
+    final url = 'http://$localIp/$deviceId/config';
+
+    // Convert config to JSON format expected by device
+    final configData = deviceConfig.map(
+      (key, value) => MapEntry(key, {
+        'value': value.value,
+        'lastModified': DateTime.now().millisecondsSinceEpoch,
+      }),
+    );
+
+    final response = await _localDio!.post(url, data: configData);
+
+    if (response.statusCode != 200) {
+      throw ApiException(message: 'Local config update failed with status ${response.statusCode}');
+    }
+  }
+
   /// Cache device data locally
   Future<void> _cacheDeviceData(String deviceId, Device device) async {
     final prefs = await SharedPreferences.getInstance();

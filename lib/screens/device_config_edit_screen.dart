@@ -4,6 +4,8 @@ import '../models/device.dart';
 import '../models/device_config_parameter.dart';
 import '../providers/device_provider.dart';
 import '../services/device_service.dart';
+import '../services/offline_device_service.dart';
+import '../services/offline_mode_service.dart';
 import '../utils/api_exception.dart';
 import '../config/app_config.dart';
 
@@ -23,6 +25,8 @@ class DeviceConfigEditScreen extends StatefulWidget {
 class _DeviceConfigEditScreenState extends State<DeviceConfigEditScreen> {
   final _formKey = GlobalKey<FormState>();
   final _deviceService = DeviceService();
+  final _offlineDeviceService = OfflineDeviceService();
+  final _offlineModeService = OfflineModeService();
 
   // Track original and modified config
   late Map<String, DeviceConfigParameter> _originalConfig;
@@ -38,6 +42,8 @@ class _DeviceConfigEditScreenState extends State<DeviceConfigEditScreen> {
   void initState() {
     super.initState();
     _deviceService.initialize();
+    _offlineDeviceService.initialize();
+    _offlineModeService.initialize();
     _originalConfig = Map.from(widget.device.deviceConfig);
     _modifiedConfig = Map.from(widget.device.deviceConfig);
   }
@@ -105,16 +111,52 @@ class _DeviceConfigEditScreenState extends State<DeviceConfigEditScreen> {
       }
       AppConfig.configLog('===================================');
 
-      // Update device config (this will also set config_update = true)
-      final updatedDevice = await _deviceService.updateDeviceConfig(
-        widget.device.id,
-        changedConfig,
-      );
+      // Check if offline mode is enabled
+      final isOffline = await _offlineModeService.isOfflineModeEnabled();
+
+      if (isOffline) {
+        // Offline mode: Use OfflineDeviceService with local IP
+        final localIp = widget.device.localIp;
+
+        if (localIp == null || localIp.isEmpty) {
+          throw ApiException(
+            message: 'Device local IP not set. Please set IP in device settings.',
+          );
+        }
+
+        // Update config via local endpoint
+        await _offlineDeviceService.updateDeviceConfig(
+          widget.device.deviceId,
+          changedConfig,
+          localIp: localIp,
+        );
+
+        // Fetch updated device data
+        final updatedDevice = await _offlineDeviceService.getDevice(
+          widget.device.deviceId,
+          localIp: localIp,
+        );
+
+        if (!mounted) return;
+
+        // Update provider
+        context.read<DeviceProvider>().setSelectedDevice(updatedDevice);
+      } else {
+        // Online mode: Use DeviceService (this will also set config_update = true)
+        final updatedDevice = await _deviceService.updateDeviceConfig(
+          widget.device.id,
+          changedConfig,
+        );
+
+        if (!mounted) return;
+
+        // Update provider
+        context.read<DeviceProvider>().setSelectedDevice(updatedDevice);
+      }
 
       if (!mounted) return;
 
-      // Update provider
-      context.read<DeviceProvider>().setSelectedDevice(updatedDevice);
+      // Refresh device list
       await context.read<DeviceProvider>().refreshDevices();
 
       // Show success message

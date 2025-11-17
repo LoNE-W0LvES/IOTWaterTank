@@ -272,6 +272,16 @@ class DeviceService {
     String deviceId,
     Map<String, DeviceConfigParameter> deviceConfig,
   ) async {
+    // Check if offline mode is enabled - prevent server calls
+    final isOffline = await _offlineModeService.isOfflineModeEnabled();
+    if (isOffline) {
+      AppConfig.offlineLog('DeviceService: Cannot update device config in offline mode. Use OfflineDeviceService instead.');
+      throw ApiException(
+        message: 'Cannot update device config in offline mode. Use local device endpoint.',
+        statusCode: 0,
+      );
+    }
+
     try {
       // Prepare the config_update flag with current timestamp
       final configUpdateFlag = ControlData(
