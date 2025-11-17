@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/device.dart';
 import '../providers/device_provider.dart';
 import '../services/device_service.dart';
+import '../services/offline_mode_service.dart';
 import '../utils/api_exception.dart';
 import 'water_tank_control_screen.dart';
 import 'device_config_edit_screen.dart';
@@ -24,12 +25,37 @@ class DeviceSettingsScreen extends StatefulWidget {
 
 class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
   final _deviceService = DeviceService();
+  final _offlineModeService = OfflineModeService();
+  final _ipController = TextEditingController();
   bool _isRemoving = false;
+  bool _isOfflineMode = false;
+  bool _isEditingIp = false;
+
+  // IP address validation regex
+  static final _ipRegex = RegExp(
+    r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$',
+  );
 
   @override
   void initState() {
     super.initState();
     _deviceService.initialize();
+    _checkOfflineMode();
+    _ipController.text = widget.device.localIp ?? '';
+  }
+
+  @override
+  void dispose() {
+    _ipController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _checkOfflineMode() async {
+    await _offlineModeService.initialize();
+    final isOffline = await _offlineModeService.isOfflineModeEnabled();
+    setState(() {
+      _isOfflineMode = isOffline;
+    });
   }
 
   Future<void> _handleRemoveDevice() async {
@@ -127,6 +153,50 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
     );
   }
 
+  Future<void> _saveIpAddress() async {
+    final newIp = _ipController.text.trim();
+
+    // Validate IP if not empty
+    if (newIp.isNotEmpty && !_ipRegex.hasMatch(newIp)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invalid IP address format'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      await _offlineModeService.updateDeviceIp(widget.device.deviceId, newIp);
+
+      setState(() {
+        _isEditingIp = false;
+      });
+
+      // Refresh device list to update the IP
+      await context.read<DeviceProvider>().refreshDevices();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Device IP address updated'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to update IP address'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -195,6 +265,99 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                         ),
                       ),
                       const Divider(height: 24),
+
+                      // Local IP Address (Editable in offline mode)
+                      if (_isOfflineMode) ...[
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.router,
+                              size: 16,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Local IP Address',
+                                    style: textTheme.bodySmall?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  if (_isEditingIp)
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: TextField(
+                                            controller: _ipController,
+                                            keyboardType: TextInputType.number,
+                                            decoration: InputDecoration(
+                                              hintText: '192.168.1.100',
+                                              isDense: true,
+                                              contentPadding: const EdgeInsets.symmetric(
+                                                horizontal: 8,
+                                                vertical: 8,
+                                              ),
+                                              border: OutlineInputBorder(
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        IconButton(
+                                          icon: const Icon(Icons.check, size: 20),
+                                          onPressed: _saveIpAddress,
+                                          color: Colors.green,
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.close, size: 20),
+                                          onPressed: () {
+                                            setState(() {
+                                              _isEditingIp = false;
+                                              _ipController.text = widget.device.localIp ?? '';
+                                            });
+                                          },
+                                          color: Colors.red,
+                                        ),
+                                      ],
+                                    )
+                                  else
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            widget.device.localIp?.isNotEmpty == true
+                                                ? widget.device.localIp!
+                                                : 'Not set (configure after WiFi setup)',
+                                            style: textTheme.bodyMedium?.copyWith(
+                                              fontWeight: FontWeight.w500,
+                                              color: widget.device.localIp?.isNotEmpty == true
+                                                  ? null
+                                                  : colorScheme.onSurfaceVariant.withOpacity(0.6),
+                                            ),
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.edit, size: 20),
+                                          onPressed: () {
+                                            setState(() {
+                                              _isEditingIp = true;
+                                            });
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Divider(height: 24),
+                      ],
 
                       // Project Name
                       if (widget.device.projectName != null) ...[

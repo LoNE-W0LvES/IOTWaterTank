@@ -80,16 +80,16 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
       final deviceId = _deviceIdController.text.trim();
 
       if (_isOfflineMode) {
-        // Offline mode: Save device locally with manual IP
+        // Offline mode: Save device locally with manual IP (optional)
         final deviceName = _deviceNameController.text.trim().isNotEmpty
             ? _deviceNameController.text.trim()
             : deviceId; // Use device ID as name if not provided
-        final localIp = _localIpController.text.trim();
+        final localIp = _localIpController.text.trim(); // Can be empty, set later in settings
 
         await _offlineModeService.addOfflineDevice(
           deviceId: deviceId,
           deviceName: deviceName,
-          localIp: localIp,
+          localIp: localIp.isEmpty ? '' : localIp, // Store empty string if not provided
         );
 
         if (!mounted) return;
@@ -262,7 +262,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Local IP TextField
+                          // Local IP TextField (Optional - can be set later in device settings)
                           TextFormField(
                             controller: _localIpController,
                             enabled: !_isLoading,
@@ -270,20 +270,20 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
                             keyboardType: TextInputType.number,
                             onFieldSubmitted: (_) => _handleAddDevice(),
                             decoration: InputDecoration(
-                              labelText: 'Device IP Address',
+                              labelText: 'Device IP Address (Optional)',
                               hintText: '192.168.1.100',
-                              helperText: 'Local network IP address of the device',
+                              helperText: 'Set later in device settings after WiFi configuration',
                               prefixIcon: const Icon(Icons.router),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
                             validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Please enter device IP address';
-                              }
-                              if (!_ipRegex.hasMatch(value.trim())) {
-                                return 'Invalid IP address format';
+                              // IP is optional, but if provided, must be valid
+                              if (value != null && value.trim().isNotEmpty) {
+                                if (!_ipRegex.hasMatch(value.trim())) {
+                                  return 'Invalid IP address format';
+                                }
                               }
                               return null;
                             },
