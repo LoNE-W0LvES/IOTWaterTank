@@ -9,11 +9,13 @@ class TimestampService {
   final ApiClient _apiClient = ApiClient();
 
   /// Get current timestamp from server
+  /// GET /api/timeSync?deviceId={deviceId}
   /// Returns server timestamp in milliseconds
-  Future<ServerTimestampResponse?> getServerTimestamp() async {
+  Future<ServerTimestampResponse?> getServerTimestamp(String deviceId) async {
     try {
       final response = await _apiClient.get(
-        '/api/timestamp',
+        '/api/timeSync',
+        queryParameters: {'deviceId': deviceId},
         options: Options(
           sendTimeout: _timeout,
           receiveTimeout: _timeout,
@@ -75,11 +77,11 @@ class TimestampService {
 
     try {
       // Step 1: Get server timestamp
-      final serverTimestamp = await getServerTimestamp();
+      final serverTimestamp = await getServerTimestamp(deviceId);
 
       if (serverTimestamp != null) {
         AppConfig.debugLog(
-          'Server timestamp obtained: ${serverTimestamp.timestamp} (${serverTimestamp.timezone})',
+          'Server timestamp obtained: ${serverTimestamp.serverTime}',
         );
       } else {
         AppConfig.debugLog('Server timestamp unavailable, device will use millis()');
@@ -129,9 +131,9 @@ class TimestampService {
     String? localIp,
   }) async {
     // Try server first
-    final serverTimestamp = await getServerTimestamp();
+    final serverTimestamp = await getServerTimestamp(deviceId);
     if (serverTimestamp != null) {
-      return serverTimestamp.timestamp;
+      return serverTimestamp.serverTime;
     }
 
     // Try device if local IP available

@@ -51,10 +51,10 @@ class TimestampProvider with ChangeNotifier {
 
     try {
       // Get server timestamp
-      final serverTimestamp = await _timestampService.getServerTimestamp();
+      final serverTimestamp = await _timestampService.getServerTimestamp(deviceId);
       if (serverTimestamp != null) {
         _lastServerSync = serverTimestamp;
-        AppConfig.debugLog('Server timestamp synced: ${serverTimestamp.timestamp}');
+        AppConfig.debugLog('Server timestamp synced: ${serverTimestamp.serverTime}');
       }
 
       // Sync with device if local IP available

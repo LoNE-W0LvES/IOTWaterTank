@@ -48,28 +48,27 @@ class TimestampSyncResponse extends Equatable {
 
 /// Server timestamp response
 class ServerTimestampResponse extends Equatable {
-  final int timestamp; // Unix timestamp in milliseconds
-  final String timezone; // Timezone (e.g., "UTC")
+  final int serverTime; // Unix timestamp in milliseconds
 
   const ServerTimestampResponse({
-    required this.timestamp,
-    required this.timezone,
+    required this.serverTime,
   });
+
+  /// Get timestamp value (alias for serverTime)
+  int get timestamp => serverTime;
 
   factory ServerTimestampResponse.fromJson(Map<String, dynamic> json) {
     return ServerTimestampResponse(
-      timestamp: json['timestamp'] as int? ?? 0,
-      timezone: json['timezone'] as String? ?? 'UTC',
+      serverTime: json['serverTime'] as int? ?? 0,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'timestamp': timestamp,
-      'timezone': timezone,
+      'serverTime': serverTime,
     };
   }
 
   @override
-  List<Object?> get props => [timestamp, timezone];
+  List<Object?> get props => [serverTime];
 }
