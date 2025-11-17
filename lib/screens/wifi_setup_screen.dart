@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/wifi_setup_provider.dart';
 import '../providers/auth_provider.dart';
+import '../services/offline_mode_service.dart';
 import '../widgets/network_list_tile.dart';
 
 class WiFiSetupScreen extends StatefulWidget {
@@ -23,6 +24,9 @@ class _WiFiSetupScreenState extends State<WiFiSetupScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _dashboardUsernameController = TextEditingController();
   final TextEditingController _dashboardPasswordController = TextEditingController();
+  final OfflineModeService _offlineModeService = OfflineModeService();
+
+  bool _isOfflineMode = false;
 
   @override
   void initState() {
@@ -31,14 +35,30 @@ class _WiFiSetupScreenState extends State<WiFiSetupScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<WiFiSetupProvider>();
       provider.reset();
+      // Check offline mode
+      _checkOfflineMode();
       // Automatically check device connection
       _checkConnection();
-      // Load saved dashboard credentials
+      // Load saved dashboard credentials (only in online mode)
       _loadSavedCredentials();
     });
   }
 
+  Future<void> _checkOfflineMode() async {
+    await _offlineModeService.initialize();
+    final isOffline = await _offlineModeService.isOfflineModeEnabled();
+    setState(() {
+      _isOfflineMode = isOffline;
+    });
+  }
+
   Future<void> _loadSavedCredentials() async {
+    // Skip loading credentials in offline mode
+    if (_isOfflineMode) {
+      print('[WiFiSetup] Offline mode: Skipping credential load');
+      return;
+    }
+
     final authProvider = context.read<AuthProvider>();
     final username = await authProvider.getDashboardUsername();
     final password = await authProvider.getDashboardPassword();
@@ -356,59 +376,63 @@ class _WiFiSetupScreenState extends State<WiFiSetupScreen> {
             onChanged: (value) => provider.setPassword(value),
           ),
 
-          const SizedBox(height: 24),
+          // Dashboard Credentials section (hidden in offline mode)
+          if (!_isOfflineMode) ...[
+            const SizedBox(height: 24),
 
-          // Dashboard Credentials section
-          Text(
-            'Dashboard Credentials',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Dashboard Username field
-          TextField(
-            controller: _dashboardUsernameController,
-            decoration: InputDecoration(
-              labelText: 'Dashboard Username',
-              hintText: 'Enter dashboard username',
-              prefixIcon: const Icon(Icons.person),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+            Text(
+              'Dashboard Credentials',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
               ),
-              filled: true,
-              fillColor: isDark ? const Color(0xFF1F2937) : Colors.white,
             ),
-            onChanged: (value) => provider.setDashboardUsername(value),
-          ),
+            const SizedBox(height: 12),
 
-          const SizedBox(height: 16),
-
-          // Dashboard Password field
-          TextField(
-            controller: _dashboardPasswordController,
-            obscureText: !provider.isDashboardPasswordVisible,
-            decoration: InputDecoration(
-              labelText: 'Dashboard Password',
-              hintText: 'Enter dashboard password',
-              prefixIcon: const Icon(Icons.vpn_key),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  provider.isDashboardPasswordVisible ? Icons.visibility_off : Icons.visibility,
+            // Dashboard Username field
+            TextField(
+              controller: _dashboardUsernameController,
+              decoration: InputDecoration(
+                labelText: 'Dashboard Username',
+                hintText: 'Enter dashboard username',
+                prefixIcon: const Icon(Icons.person),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                onPressed: provider.toggleDashboardPasswordVisibility,
+                filled: true,
+                fillColor: isDark ? const Color(0xFF1F2937) : Colors.white,
               ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              filled: true,
-              fillColor: isDark ? const Color(0xFF1F2937) : Colors.white,
+              onChanged: (value) => provider.setDashboardUsername(value),
             ),
-            onChanged: (value) => provider.setDashboardPassword(value),
-          ),
 
-          const SizedBox(height: 24),
+            const SizedBox(height: 16),
+
+            // Dashboard Password field
+            TextField(
+              controller: _dashboardPasswordController,
+              obscureText: !provider.isDashboardPasswordVisible,
+              decoration: InputDecoration(
+                labelText: 'Dashboard Password',
+                hintText: 'Enter dashboard password',
+                prefixIcon: const Icon(Icons.vpn_key),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    provider.isDashboardPasswordVisible ? Icons.visibility_off : Icons.visibility,
+                  ),
+                  onPressed: provider.toggleDashboardPasswordVisibility,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                filled: true,
+                fillColor: isDark ? const Color(0xFF1F2937) : Colors.white,
+              ),
+              onChanged: (value) => provider.setDashboardPassword(value),
+            ),
+
+            const SizedBox(height: 24),
+          ] else ...[
+            const SizedBox(height: 24),
+          ],
 
           // Error message
           if (provider.error != null)

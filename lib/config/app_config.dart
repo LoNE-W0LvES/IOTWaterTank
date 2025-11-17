@@ -19,6 +19,10 @@ class AppConfig {
   static const String dashboardUsernameKey = 'dashboard_username';
   static const String dashboardPasswordKey = 'dashboard_password';
 
+  // Offline Mode Configuration
+  static const String offlineModeKey = 'offline_mode_enabled';
+  static const String offlineDevicesKey = 'offline_devices'; // JSON string of offline devices
+
   // App Configuration
   static const String appName = 'IoT Water Tank';
   static const String appVersion = '1.0.0';

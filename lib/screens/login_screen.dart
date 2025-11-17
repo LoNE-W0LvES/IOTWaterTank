@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../config/app_config.dart';
+import '../services/offline_mode_service.dart';
 import 'signup_screen.dart';
+import 'device_list_screen.dart';
 
 /// Login screen with email/password authentication
 class LoginScreen extends StatefulWidget {
@@ -40,6 +42,27 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success && mounted) {
       // Navigation is handled by the parent widget
       // based on the auth state change
+    }
+  }
+
+  Future<void> _handleUseOffline() async {
+    final offlineModeService = OfflineModeService();
+    await offlineModeService.initialize();
+
+    // Enable offline mode and clear credentials
+    await offlineModeService.enableOfflineMode();
+
+    // Clear auth provider state
+    final authProvider = context.read<AuthProvider>();
+    await authProvider.signOut();
+
+    if (mounted) {
+      // Navigate to device list screen in offline mode
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const DeviceListScreen(),
+        ),
+      );
     }
   }
 
@@ -352,6 +375,24 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Use Offline Button
+                    OutlinedButton.icon(
+                      onPressed: _handleUseOffline,
+                      icon: const Icon(Icons.wifi_off_rounded),
+                      label: const Text('Use Offline'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 16,
+                          horizontal: 24,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
                     ),
 
                     const SizedBox(height: 8),
