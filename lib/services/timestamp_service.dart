@@ -41,10 +41,15 @@ class TimestampService {
       );
 
       if (response.statusCode == 200 && response.data != null) {
+        print('[TimestampService] Server timestamp response:');
+        print('[TimestampService] Status Code: ${response.statusCode}');
+        print('[TimestampService] Response Data: ${response.data}');
         return ServerTimestampResponse.fromJson(response.data);
       }
+      print('[TimestampService] No valid response: statusCode=${response.statusCode}, hasData=${response.data != null}');
       return null;
     } catch (e) {
+      print('[TimestampService] Error getting server timestamp: $e');
       AppConfig.deviceLog('Failed to get server timestamp: $e');
       return null;
     }
@@ -71,11 +76,16 @@ class TimestampService {
 
       final response = await dio.get('/$deviceId/timestamp');
 
+      print('[TimestampService] Device timestamp response from $localIp:');
+      print('[TimestampService] Status Code: ${response.statusCode}');
+      print('[TimestampService] Response Data: ${response.data}');
+
       if (response.statusCode == 200 && response.data != null) {
         return TimestampSyncResponse.fromJson(response.data);
       }
       return null;
     } catch (e) {
+      print('[TimestampService] Error getting device timestamp from $localIp: $e');
       AppConfig.deviceLog('Failed to get device timestamp from $localIp: $e');
       return null;
     }
@@ -102,10 +112,18 @@ class TimestampService {
         sendTimeout: _timeout,
       ));
 
+      print('[TimestampService] Sending timestamp to device at $localIp');
+      print('[TimestampService] POST /$deviceId/timestamp');
+      print('[TimestampService] Data: {"timestamp": $timestamp}');
+
       final response = await dio.post(
         '/$deviceId/timestamp',
         data: {'timestamp': timestamp},
       );
+
+      print('[TimestampService] POST timestamp response:');
+      print('[TimestampService] Status Code: ${response.statusCode}');
+      print('[TimestampService] Response Data: ${response.data}');
 
       if (response.statusCode == 200) {
         AppConfig.deviceLog('Timestamp sent to device: $timestamp');
@@ -113,6 +131,7 @@ class TimestampService {
       }
       return false;
     } catch (e) {
+      print('[TimestampService] Error sending timestamp to device at $localIp: $e');
       AppConfig.deviceLog('Failed to send timestamp to device at $localIp: $e');
       return false;
     }

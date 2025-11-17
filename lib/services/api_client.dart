@@ -50,13 +50,28 @@ class ApiClient {
       ));
     }
 
-    // Add error handling interceptor
+    // Add response and error handling interceptor
     _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) {
+        print('[ApiClient] ${options.method} ${options.baseUrl}${options.path}');
+        if (options.queryParameters.isNotEmpty) {
+          print('[ApiClient] Query Parameters: ${options.queryParameters}');
+        }
+        if (options.data != null) {
+          print('[ApiClient] Request Data: ${options.data}');
+        }
+        handler.next(options);
+      },
+      onResponse: (response, handler) {
+        print('[ApiClient] Response ${response.statusCode} from ${response.requestOptions.path}');
+        print('[ApiClient] Response Data: ${response.data}');
+        handler.next(response);
+      },
       onError: (error, handler) {
-        print('API Error: ${error.message}');
+        print('[ApiClient] API Error: ${error.message}');
         if (error.response != null) {
-          print('Status Code: ${error.response?.statusCode}');
-          print('Response Data: ${error.response?.data}');
+          print('[ApiClient] Error Status Code: ${error.response?.statusCode}');
+          print('[ApiClient] Error Response Data: ${error.response?.data}');
         }
         handler.next(error);
       },
