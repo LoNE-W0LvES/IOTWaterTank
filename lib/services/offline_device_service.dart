@@ -182,13 +182,37 @@ class OfflineDeviceService {
   Future<Device> _getDeviceFromLocal(String deviceId, String localIp) async {
     if (_localDio == null) throw Exception('Service not initialized');
 
-    final url = 'http://$localIp/api/device';
-    final response = await _localDio!.get(url);
+    // Fetch telemetry and control data from device's local endpoints
+    final telemetryUrl = 'http://$localIp/$deviceId/telemetry';
+    final controlUrl = 'http://$localIp/$deviceId/control';
 
-    if (response.statusCode == 200) {
-      return Device.fromJson(response.data);
-    } else {
-      throw ApiException(message: 'Local device returned status ${response.statusCode}');
+    try {
+      // Fetch both endpoints
+      final telemetryResponse = await _localDio!.get(telemetryUrl);
+      final controlResponse = await _localDio!.get(controlUrl);
+
+      if (telemetryResponse.statusCode == 200 && controlResponse.statusCode == 200) {
+        // Merge telemetry and control data into a device object
+        final deviceData = {
+          'id': deviceId,
+          'name': deviceId, // Will be overridden by cached data if available
+          'deviceId': deviceId,
+          'projectId': AppConfig.projectId,
+          'isActive': true,
+          'telemetryData': telemetryResponse.data ?? {},
+          'controlData': controlResponse.data ?? {},
+          'deviceConfig': {}, // Will be filled from cache
+        };
+
+        return Device.fromJson(deviceData);
+      } else {
+        throw ApiException(
+          message: 'Local device returned status: telemetry=${telemetryResponse.statusCode}, control=${controlResponse.statusCode}',
+        );
+      }
+    } catch (e) {
+      AppConfig.errorLog('Failed to fetch from local device', error: e);
+      rethrow;
     }
   }
 
@@ -254,7 +278,8 @@ class OfflineDeviceService {
   ) async {
     if (_localDio == null) throw Exception('Service not initialized');
 
-    final url = 'http://$localIp/api/control';
+    // Use device's local endpoint: POST /{deviceId}/control
+    final url = 'http://$localIp/$deviceId/control';
     final response = await _localDio!.post(url, data: {
       key: {
         'type': type,
