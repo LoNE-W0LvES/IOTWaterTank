@@ -18,6 +18,7 @@ class Device extends Equatable {
   final DateTime? lastSeen;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final String? localIp; // Local IP address for offline mode
 
   const Device({
     required this.id,
@@ -33,6 +34,7 @@ class Device extends Equatable {
     this.lastSeen,
     this.createdAt,
     this.updatedAt,
+    this.localIp,
   });
 
   /// Create from JSON
@@ -113,6 +115,7 @@ class Device extends Equatable {
       updatedAt: json['updatedAt'] != null
           ? DateTime.parse(json['updatedAt'] as String)
           : null,
+      localIp: json['localIp'] as String?,
     );
   }
 
@@ -138,6 +141,7 @@ class Device extends Equatable {
       if (lastSeen != null) 'lastSeen': lastSeen!.toIso8601String(),
       if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
       if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
+      if (localIp != null) 'localIp': localIp,
     };
   }
 
@@ -234,6 +238,7 @@ class Device extends Equatable {
     DateTime? lastSeen,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? localIp,
   }) {
     return Device(
       id: id ?? this.id,
@@ -249,6 +254,7 @@ class Device extends Equatable {
       lastSeen: lastSeen ?? this.lastSeen,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      localIp: localIp ?? this.localIp,
     );
   }
 
@@ -267,6 +273,7 @@ class Device extends Equatable {
         lastSeen,
         createdAt,
         updatedAt,
+        localIp,
       ];
 
   @override
