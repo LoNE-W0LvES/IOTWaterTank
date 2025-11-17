@@ -240,6 +240,7 @@ class OfflineDeviceService {
     String? localIp,
   }) async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final isOffline = await _offlineModeService.isOfflineModeEnabled();
 
     // Try local connection first if IP is available
     if (localIp != null && localIp.isNotEmpty) {
@@ -247,38 +248,50 @@ class OfflineDeviceService {
         AppConfig.offlineLog('Attempting to update control via local IP: $localIp');
         await _updateControlLocal(deviceId, key, value, type, timestamp, localIp);
 
-        // Also queue for server sync
-        await _queueControlUpdate(deviceId, key, value, type, timestamp);
-
         AppConfig.offlineLog('Control updated via local IP');
         return true;
       } catch (e) {
         AppConfig.offlineLog('Local control update failed: $e');
+
+        // In offline mode, don't fall back to server - just queue it
+        if (isOffline) {
+          AppConfig.offlineLog('Offline mode: Queuing control update without server fallback');
+          await _queueControlUpdate(deviceId, key, value, type, timestamp);
+          return true;
+        }
+
         AppConfig.offlineLog('Falling back to server...');
       }
     }
 
-    // Try server
-    try {
-      await _apiClient.patch('/api/devices/$deviceId', data: {
-        'controlData': {
-          key: {
-            'type': type,
-            'value': value,
-            'lastModified': timestamp,
+    // Try server (only if not in offline mode)
+    if (!isOffline) {
+      try {
+        await _apiClient.patch('/api/devices/$deviceId', data: {
+          'controlData': {
+            key: {
+              'type': type,
+              'value': value,
+              'lastModified': timestamp,
+            }
           }
-        }
-      });
+        });
 
-      // Remove from queue if it was there
-      await _removeFromQueue(deviceId, key);
+        // Remove from queue if it was there
+        await _removeFromQueue(deviceId, key);
 
-      return true;
-    } catch (e) {
-      // Queue for later sync
+        return true;
+      } catch (e) {
+        // Queue for later sync
+        await _queueControlUpdate(deviceId, key, value, type, timestamp);
+        AppConfig.offlineLog('Control update queued for sync (server failed)');
+        return true; // Return true since it's queued
+      }
+    } else {
+      // Offline mode with no local IP - queue for later
       await _queueControlUpdate(deviceId, key, value, type, timestamp);
-      AppConfig.offlineLog('Control update queued for sync (offline mode)');
-      return true; // Return true since it's queued
+      AppConfig.offlineLog('Offline mode: Control update queued (no local IP)');
+      return true;
     }
   }
 
