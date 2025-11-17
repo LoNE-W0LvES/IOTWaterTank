@@ -5,6 +5,7 @@ import '../models/device.dart';
 import '../providers/device_provider.dart';
 import '../providers/offline_provider.dart';
 import '../providers/theme_provider.dart' as app_theme;
+import '../providers/timestamp_provider.dart';
 import '../widgets/loading_widget.dart';
 import '../widgets/error_widget.dart';
 import '../widgets/circular_water_level.dart';
@@ -42,8 +43,28 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
     _pulseAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+    // Sync timestamp when screen loads
+    _syncTimestamp();
     // Start auto-refresh timer (every 3 seconds)
     _startAutoRefresh();
+  }
+
+  /// Sync timestamp with device
+  Future<void> _syncTimestamp() async {
+    final deviceProvider = context.read<DeviceProvider>();
+    final timestampProvider = context.read<TimestampProvider>();
+
+    if (deviceProvider.selectedDevice != null) {
+      final device = deviceProvider.selectedDevice!;
+      final localIp = device.deviceConfig['ip_address']?.value?.toString();
+
+      if (localIp != null && localIp.isNotEmpty) {
+        await timestampProvider.syncDevice(
+          device.deviceId,
+          localIp: localIp,
+        );
+      }
+    }
   }
 
   @override
@@ -57,11 +78,20 @@ class _WaterTankControlScreenState extends State<WaterTankControlScreen>
     _refreshTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
       final deviceProvider = context.read<DeviceProvider>();
       final offlineProvider = context.read<OfflineProvider>();
+      final timestampProvider = context.read<TimestampProvider>();
 
       if (deviceProvider.selectedDevice != null && !deviceProvider.isLoading) {
         try {
           final localIp = deviceProvider.selectedDevice!.deviceConfig['ip_address']?.value;
           final deviceId = deviceProvider.selectedDevice!.id;
+
+          // Periodic timestamp sync (every hour)
+          if (timestampProvider.needsSync()) {
+            await timestampProvider.syncDevice(
+              deviceProvider.selectedDevice!.deviceId,
+              localIp: localIp?.toString(),
+            );
+          }
 
           // Use getDeviceLiveData for efficient updates (telemetry + control only)
           final device = await offlineProvider.service.getDeviceLiveData(

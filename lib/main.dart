@@ -5,6 +5,7 @@ import 'providers/device_provider.dart';
 import 'providers/offline_provider.dart';
 import 'providers/theme_provider.dart' as app_theme;
 import 'providers/wifi_setup_provider.dart';
+import 'providers/timestamp_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/device_list_screen.dart';
 import 'config/app_config.dart';
@@ -19,6 +20,7 @@ void main() async {
   final offlineProvider = OfflineProvider();
   final themeProvider = app_theme.ThemeProvider();
   final wifiSetupProvider = WiFiSetupProvider();
+  final timestampProvider = TimestampProvider();
 
   await authProvider.initialize();
   await deviceProvider.initialize();
@@ -33,6 +35,7 @@ void main() async {
         ChangeNotifierProvider.value(value: offlineProvider),
         ChangeNotifierProvider.value(value: themeProvider),
         ChangeNotifierProvider.value(value: wifiSetupProvider),
+        ChangeNotifierProvider.value(value: timestampProvider),
       ],
       child: const MyApp(),
     ),
