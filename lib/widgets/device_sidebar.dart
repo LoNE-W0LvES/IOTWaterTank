@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/device.dart';
 import '../providers/device_provider.dart';
+import '../providers/timestamp_provider.dart';
 import '../screens/water_tank_control_screen.dart';
 import '../screens/device_settings_screen.dart';
 import '../screens/add_device_screen.dart';
+import 'package:intl/intl.dart';
 
 class DeviceSidebar extends StatefulWidget {
   const DeviceSidebar({Key? key}) : super(key: key);
@@ -313,87 +315,137 @@ class DeviceCardSidebar extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1F2937) : Colors.white,
-        border: Border.all(
-          color: isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB),
-        ),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Row(
-            children: [
-              // Online/Offline indicator
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: device.isOnline
-                      ? const Color(0xFF10B981) // Green-500
-                      : const Color(0xFF6B7280), // Gray-500
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 10),
+    return Consumer<TimestampProvider>(
+      builder: (context, timestampProvider, child) {
+        // Format synced timestamp
+        String? syncedTime;
+        String? syncSource;
 
-              // Device info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      device.name,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white : const Color(0xFF111827),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${device.deviceId} • ${device.lastSeenText}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
-                        fontSize: 11,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
+        if (timestampProvider.lastSyncSource == 'server' &&
+            timestampProvider.lastServerSync != null) {
+          final timestamp = DateTime.fromMillisecondsSinceEpoch(
+            timestampProvider.lastServerSync!.serverTime,
+          );
+          syncedTime = DateFormat('HH:mm:ss').format(timestamp);
+          syncSource = 'Server';
+        } else if (timestampProvider.lastSyncSource == 'device' &&
+                   timestampProvider.lastDeviceSync != null) {
+          final timestamp = DateTime.fromMillisecondsSinceEpoch(
+            timestampProvider.lastDeviceSync!.timestamp,
+          );
+          syncedTime = DateFormat('HH:mm:ss').format(timestamp);
+          syncSource = timestampProvider.lastDeviceSync!.source == 'server'
+              ? 'Device (synced)'
+              : 'Device (local)';
+        }
 
-              const SizedBox(width: 8),
-
-              // Action button
-              Material(
-                color: isDark ? const Color(0xFF374151) : const Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(6),
-                child: InkWell(
-                  onTap: onSettingsTap,
-                  borderRadius: BorderRadius.circular(6),
-                  child: Padding(
-                    padding: const EdgeInsets.all(6),
-                    child: Icon(
-                      Icons.settings,
-                      size: 18,
-                      color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
+        return Container(
+          margin: const EdgeInsets.only(bottom: 6),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1F2937) : Colors.white,
+            border: Border.all(
+              color: isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB),
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: Row(
+                children: [
+                  // Online/Offline indicator
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: device.isOnline
+                          ? const Color(0xFF10B981) // Green-500
+                          : const Color(0xFF6B7280), // Gray-500
+                      shape: BoxShape.circle,
                     ),
                   ),
-                ),
+                  const SizedBox(width: 10),
+
+                  // Device info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          device.name,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white : const Color(0xFF111827),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${device.deviceId} • ${device.lastSeenText}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
+                            fontSize: 11,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (syncedTime != null && syncSource != null) ...[
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.access_time,
+                                size: 10,
+                                color: isDark ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF),
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  '$syncedTime • $syncSource',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: isDark ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF),
+                                    fontSize: 10,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  // Action button
+                  Material(
+                    color: isDark ? const Color(0xFF374151) : const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(6),
+                    child: InkWell(
+                      onTap: onSettingsTap,
+                      borderRadius: BorderRadius.circular(6),
+                      child: Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: Icon(
+                          Icons.settings,
+                          size: 18,
+                          color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
