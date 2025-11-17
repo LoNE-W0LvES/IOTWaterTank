@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/device_provider.dart';
+import '../services/offline_mode_service.dart';
 import '../widgets/loading_widget.dart';
 import '../widgets/error_widget.dart';
 import '../widgets/device_card.dart';
 import '../widgets/device_sidebar.dart';
 import 'water_tank_control_screen.dart';
 import 'add_device_screen.dart';
+import 'login_screen.dart';
 import '../config/app_config.dart';
 
 /// Device list screen with filtering and pull-to-refresh
@@ -19,12 +21,24 @@ class DeviceListScreen extends StatefulWidget {
 }
 
 class _DeviceListScreenState extends State<DeviceListScreen> {
+  final _offlineModeService = OfflineModeService();
+  bool _isOfflineMode = false;
+
   @override
   void initState() {
     super.initState();
     // Fetch devices when screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkOfflineMode();
       context.read<DeviceProvider>().fetchDevices();
+    });
+  }
+
+  Future<void> _checkOfflineMode() async {
+    await _offlineModeService.initialize();
+    final isOffline = await _offlineModeService.isOfflineModeEnabled();
+    setState(() {
+      _isOfflineMode = isOffline;
     });
   }
 
@@ -99,11 +113,16 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
   }
 
   void _handleLogout() async {
+    final title = _isOfflineMode ? 'Exit Offline Mode' : 'Logout';
+    final content = _isOfflineMode
+        ? 'Exit offline mode and return to login?'
+        : 'Are you sure you want to logout?';
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
+        title: Text(title),
+        content: Text(content),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -111,14 +130,27 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Logout'),
+            child: Text(_isOfflineMode ? 'Exit' : 'Logout'),
           ),
         ],
       ),
     );
 
     if (confirmed == true && mounted) {
-      await context.read<AuthProvider>().signOut();
+      if (_isOfflineMode) {
+        // Exit offline mode
+        await _offlineModeService.disableOfflineMode();
+        // Navigate to login screen
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+            (route) => false,
+          );
+        }
+      } else {
+        // Normal logout
+        await context.read<AuthProvider>().signOut();
+      }
     }
   }
 
@@ -126,7 +158,20 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Devices'),
+        title: Row(
+          children: [
+            const Text('Devices'),
+            if (_isOfflineMode) ...[
+              const SizedBox(width: 8),
+              Chip(
+                avatar: const Icon(Icons.wifi_off_rounded, size: 16),
+                label: const Text('Offline', style: TextStyle(fontSize: 12)),
+                visualDensity: VisualDensity.compact,
+                backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+              ),
+            ],
+          ],
+        ),
         leading: Builder(
           builder: (context) => IconButton(
             icon: const Icon(Icons.menu),
