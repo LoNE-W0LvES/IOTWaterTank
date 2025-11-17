@@ -5,15 +5,18 @@ import '../models/device.dart';
 import '../models/control_data.dart';
 import '../models/device_config_parameter.dart';
 import 'api_client.dart';
+import 'offline_mode_service.dart';
 import '../utils/api_exception.dart';
 
 /// Service for managing devices and their control/telemetry data
 class DeviceService {
   final ApiClient _apiClient = ApiClient();
+  final OfflineModeService _offlineModeService = OfflineModeService();
 
   /// Initialize the device service
   Future<void> initialize() async {
     await _apiClient.initialize();
+    await _offlineModeService.initialize();
   }
 
   /// Fetch all devices
@@ -21,6 +24,16 @@ class DeviceService {
     bool assignedOnly = true,
     String? projectId,
   }) async {
+    // Check if offline mode is enabled - prevent server calls
+    final isOffline = await _offlineModeService.isOfflineModeEnabled();
+    if (isOffline) {
+      AppConfig.offlineLog('DeviceService: Skipping getDevices server call in offline mode');
+      throw ApiException(
+        message: 'Cannot fetch devices in offline mode. Use DeviceProvider which loads offline devices.',
+        statusCode: 0,
+      );
+    }
+
     try {
       final queryParams = <String, dynamic>{};
       if (assignedOnly) {
@@ -69,6 +82,16 @@ class DeviceService {
 
   /// Get a single device by ID
   Future<Device> getDevice(String deviceId) async {
+    // Check if offline mode is enabled - prevent server calls
+    final isOffline = await _offlineModeService.isOfflineModeEnabled();
+    if (isOffline) {
+      AppConfig.offlineLog('DeviceService: Skipping getDevice server call in offline mode');
+      throw ApiException(
+        message: 'Cannot fetch device in offline mode. Use OfflineDeviceService instead.',
+        statusCode: 0,
+      );
+    }
+
     try {
       final response = await _apiClient.get('${AppConfig.devicesEndpoint}/$deviceId');
 
