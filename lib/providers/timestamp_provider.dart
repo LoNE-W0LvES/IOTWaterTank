@@ -11,12 +11,14 @@ class TimestampProvider with ChangeNotifier {
   ServerTimestampResponse? _lastServerSync;
   DateTime? _lastSyncTime;
   bool _isSyncing = false;
+  String? _lastSyncSource; // 'server' or 'device'
 
   // Getters
   TimestampSyncResponse? get lastDeviceSync => _lastDeviceSync;
   ServerTimestampResponse? get lastServerSync => _lastServerSync;
   DateTime? get lastSyncTime => _lastSyncTime;
   bool get isSyncing => _isSyncing;
+  String? get lastSyncSource => _lastSyncSource;
 
   /// Check if device is synced with server
   bool get isDeviceSynced => _lastDeviceSync?.isServerSynced ?? false;
@@ -54,6 +56,8 @@ class TimestampProvider with ChangeNotifier {
       final serverTimestamp = await _timestampService.getServerTimestamp(deviceId);
       if (serverTimestamp != null) {
         _lastServerSync = serverTimestamp;
+        _lastSyncSource = 'server';
+        _lastSyncTime = DateTime.now();
         AppConfig.deviceLog('Server timestamp synced: ${serverTimestamp.serverTime}');
       }
 
@@ -66,6 +70,7 @@ class TimestampProvider with ChangeNotifier {
 
         if (deviceSync != null) {
           _lastDeviceSync = deviceSync;
+          _lastSyncSource = 'device';
           _lastSyncTime = DateTime.now();
 
           AppConfig.deviceLog(
@@ -117,6 +122,7 @@ class TimestampProvider with ChangeNotifier {
     _lastDeviceSync = null;
     _lastServerSync = null;
     _lastSyncTime = null;
+    _lastSyncSource = null;
     notifyListeners();
   }
 

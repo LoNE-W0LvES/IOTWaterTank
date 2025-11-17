@@ -126,6 +126,10 @@ class TimestampService {
 
   /// Get current timestamp with fallback strategy
   /// Priority: Server > Device Local > System time
+  ///
+  /// Note: System time is used as last resort to keep app running,
+  /// but if both server and device are offline, the device won't be
+  /// able to save data anyway. App will keep trying to reconnect.
   Future<int> getCurrentTimestamp(
     String deviceId, {
     String? localIp,
@@ -147,7 +151,7 @@ class TimestampService {
       }
     }
 
-    // Fallback to system time
+    // Fallback to system time (app keeps running until server/device reconnects)
     return DateTime.now().millisecondsSinceEpoch;
   }
 }
