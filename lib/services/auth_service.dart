@@ -45,6 +45,13 @@ class AuthService {
           // Save keep logged in preference
           await _saveKeepLoggedIn(keepLoggedIn);
 
+          // Save login credentials as dashboard credentials for WiFi setup autofill
+          await saveDashboardCredentials(
+            username: email,
+            password: password,
+          );
+          print('[Auth] Login credentials saved as dashboard credentials');
+
           // Return user data if available
           final data = response.data;
           if (data is Map<String, dynamic>) {
@@ -91,6 +98,13 @@ class AuthService {
           // Save session state
           await _saveSessionState(true);
 
+          // Save signup credentials as dashboard credentials for WiFi setup autofill
+          await saveDashboardCredentials(
+            username: email,
+            password: password,
+          );
+          print('[Auth] Signup credentials saved as dashboard credentials');
+
           // Return user data if available
           final data = response.data;
           if (data is Map<String, dynamic>) {
@@ -136,16 +150,22 @@ class AuthService {
 
       // Check if user chose to stay logged in
       final keepLoggedIn = _prefs?.getBool(AppConfig.keepLoggedInKey) ?? false;
+      print('[Auth] Checking login status: keepLoggedIn=$keepLoggedIn');
 
       // If user didn't choose "keep me logged in", treat as logged out
       if (!keepLoggedIn) {
+        print('[Auth] Keep me logged in is false, logging out');
         await _saveSessionState(false);
         return false;
       }
 
       final isLoggedIn = _prefs?.getBool(AppConfig.sessionStorageKey) ?? false;
+      print('[Auth] Session storage key: $isLoggedIn');
 
-      if (!isLoggedIn) return false;
+      if (!isLoggedIn) {
+        print('[Auth] No session found in storage');
+        return false;
+      }
 
       // Check if we have valid cookies
       final cookies = await _apiClient.getCookies(AppConfig.baseUrl);
@@ -154,8 +174,12 @@ class AuthService {
         orElse: () => Cookie('', ''),
       );
 
+      print('[Auth] Session cookie found: ${sessionCookie.value.isNotEmpty}');
+      print('[Auth] Session cookie value length: ${sessionCookie.value.length}');
+
       return sessionCookie.value.isNotEmpty;
     } catch (e) {
+      print('[Auth] Error checking login status: $e');
       return false;
     }
   }
@@ -176,6 +200,7 @@ class AuthService {
   Future<void> _saveKeepLoggedIn(bool keepLoggedIn) async {
     _prefs ??= await SharedPreferences.getInstance();
     await _prefs?.setBool(AppConfig.keepLoggedInKey, keepLoggedIn);
+    print('[Auth] Keep me logged in preference saved: $keepLoggedIn');
   }
 
   /// Get keep logged in preference

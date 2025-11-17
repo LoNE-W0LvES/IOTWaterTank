@@ -43,11 +43,19 @@ class _WiFiSetupScreenState extends State<WiFiSetupScreen> {
     final username = await authProvider.getDashboardUsername();
     final password = await authProvider.getDashboardPassword();
 
+    print('[WiFiSetup] Loading saved credentials: username=$username, hasPassword=${password != null && password.isNotEmpty}');
+
     if (username != null && username.isNotEmpty) {
-      _dashboardUsernameController.text = username;
+      setState(() {
+        _dashboardUsernameController.text = username;
+      });
+      print('[WiFiSetup] Username autofilled: $username');
     }
     if (password != null && password.isNotEmpty) {
-      _dashboardPasswordController.text = password;
+      setState(() {
+        _dashboardPasswordController.text = password;
+      });
+      print('[WiFiSetup] Password autofilled');
     }
   }
 
@@ -86,11 +94,15 @@ class _WiFiSetupScreenState extends State<WiFiSetupScreen> {
       // Save dashboard credentials for future autofill
       final dashUsername = _dashboardUsernameController.text.trim();
       final dashPassword = _dashboardPasswordController.text.trim();
+      print('[WiFiSetup] Saving credentials: username=$dashUsername, hasPassword=${dashPassword.isNotEmpty}');
       if (dashUsername.isNotEmpty && dashPassword.isNotEmpty) {
         await authProvider.saveDashboardCredentials(
           username: dashUsername,
           password: dashPassword,
         );
+        print('[WiFiSetup] Dashboard credentials saved successfully');
+      } else {
+        print('[WiFiSetup] Skipping credential save (empty username or password)');
       }
 
       ScaffoldMessenger.of(context).showSnackBar(

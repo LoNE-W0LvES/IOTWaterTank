@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 import '../config/app_config.dart';
 import '../utils/api_exception.dart';
 
@@ -19,7 +21,12 @@ class ApiClient {
   Future<void> initialize() async {
     if (_initialized) return;
 
-    _cookieJar = CookieJar();
+    // Use PersistCookieJar to save cookies to disk
+    final Directory appDocDir = await getApplicationDocumentsDirectory();
+    final String appDocPath = appDocDir.path;
+    _cookieJar = PersistCookieJar(
+      storage: FileStorage('$appDocPath/.cookies/'),
+    );
 
     _dio = Dio(BaseOptions(
       baseUrl: AppConfig.baseUrl,
