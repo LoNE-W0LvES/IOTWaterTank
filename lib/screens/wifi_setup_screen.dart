@@ -410,43 +410,6 @@ class _WiFiSetupScreenState extends State<WiFiSetupScreen> {
 
           const SizedBox(height: 24),
 
-          // Network list
-          if (provider.availableNetworks.isNotEmpty) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Available Networks',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  '${provider.availableNetworks.length} found',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ...provider.availableNetworks.map((network) {
-              final isSelected = _ssidController.text == network.ssid;
-              return NetworkListTile(
-                network: network,
-                isSelected: isSelected,
-                onTap: () {
-                  setState(() {
-                    _ssidController.text = network.ssid;
-                    provider.setSelectedSSID(network.ssid);
-                  });
-                },
-              );
-            }).toList(),
-          ],
-
-          const SizedBox(height: 24),
-
           // Error message
           if (provider.error != null)
             Container(
@@ -495,6 +458,42 @@ class _WiFiSetupScreenState extends State<WiFiSetupScreen> {
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
           ),
+
+          // Network list - shown below action buttons
+          if (provider.availableNetworks.isNotEmpty) ...[
+            const SizedBox(height: 32),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Available Networks',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  '${provider.availableNetworks.length} found',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...provider.availableNetworks.map((network) {
+              final isSelected = _ssidController.text == network.ssid;
+              return NetworkListTile(
+                network: network,
+                isSelected: isSelected,
+                onTap: () {
+                  setState(() {
+                    _ssidController.text = network.ssid;
+                    provider.setSelectedSSID(network.ssid);
+                  });
+                },
+              );
+            }).toList(),
+          ],
         ],
       ),
     );
