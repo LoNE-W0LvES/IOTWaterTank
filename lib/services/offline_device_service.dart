@@ -7,17 +7,22 @@ import '../models/device_config_parameter.dart';
 import '../utils/api_exception.dart';
 import '../config/app_config.dart';
 import 'api_client.dart';
+import 'offline_mode_service.dart';
 
 /// Service for offline-capable device operations
-/// Tries local IP first, then falls back to server
+/// Tries local IP first, then falls back to server (unless in offline mode)
 class OfflineDeviceService {
   final ApiClient _apiClient;
+  final OfflineModeService _offlineModeService;
   Dio? _localDio;
 
-  OfflineDeviceService() : _apiClient = ApiClient();
+  OfflineDeviceService()
+      : _apiClient = ApiClient(),
+        _offlineModeService = OfflineModeService();
 
   Future<void> initialize() async {
     await _apiClient.initialize();
+    await _offlineModeService.initialize();
 
     // Create a separate Dio instance for local connections
     _localDio = Dio(BaseOptions(
@@ -29,8 +34,10 @@ class OfflineDeviceService {
   }
 
   /// Get full device data including config (use for settings)
-  /// Tries local IP first, then falls back to server
+  /// Tries local IP first, then falls back to server (unless in offline mode)
   Future<Device> getDevice(String deviceId, {String? localIp}) async {
+    final isOffline = await _offlineModeService.isOfflineModeEnabled();
+
     // Try local connection first if IP is available
     if (localIp != null && localIp.isNotEmpty) {
       try {
@@ -45,35 +52,59 @@ class OfflineDeviceService {
         return localDevice;
       } catch (e) {
         AppConfig.offlineLog('Local connection failed: $e');
+
+        // In offline mode, don't fall back to server
+        if (isOffline) {
+          AppConfig.offlineLog('Offline mode: Skipping server fallback');
+          final cachedDevice = await _getCachedDeviceData(deviceId);
+          if (cachedDevice != null) {
+            AppConfig.offlineLog('Using cached full device data');
+            return cachedDevice;
+          }
+          throw ApiException(message: 'Device not reachable and no cached data available');
+        }
+
         AppConfig.offlineLog('Falling back to server...');
       }
     }
 
-    // Fall back to server
-    try {
-      final response = await _apiClient.get('/api/devices/$deviceId');
-      final device = Device.fromJson(response.data);
+    // Fall back to server (only if not in offline mode)
+    if (!isOffline) {
+      try {
+        final response = await _apiClient.get('/api/devices/$deviceId');
+        final device = Device.fromJson(response.data);
 
-      // Cache the full data locally
-      await _cacheDeviceData(deviceId, device);
-      await _cacheDeviceConfig(deviceId, device.deviceConfig);
+        // Cache the full data locally
+        await _cacheDeviceData(deviceId, device);
+        await _cacheDeviceConfig(deviceId, device.deviceConfig);
 
-      return device;
-    } catch (e) {
-      // Try to return cached data if available
+        return device;
+      } catch (e) {
+        // Try to return cached data if available
+        final cachedDevice = await _getCachedDeviceData(deviceId);
+        if (cachedDevice != null) {
+          AppConfig.offlineLog('Using cached full device data (server failed)');
+          return cachedDevice;
+        }
+
+        throw ApiException(message: 'Failed to fetch device data');
+      }
+    } else {
+      // Offline mode with no local IP - use cached data only
       final cachedDevice = await _getCachedDeviceData(deviceId);
       if (cachedDevice != null) {
-        AppConfig.offlineLog('Using cached full device data (offline mode)');
+        AppConfig.offlineLog('Offline mode: Using cached full device data');
         return cachedDevice;
       }
-
-      throw ApiException(message: 'Failed to fetch device data');
+      throw ApiException(message: 'No device data available in offline mode');
     }
   }
 
   /// Get device live data (telemetry + control only, use cached config)
   /// This is more efficient for regular dashboard updates
   Future<Device> getDeviceLiveData(String deviceId, {String? localIp}) async {
+    final isOffline = await _offlineModeService.isOfflineModeEnabled();
+
     // Get cached config first
     final cachedConfig = await _getCachedDeviceConfig(deviceId);
 
@@ -95,33 +126,55 @@ class OfflineDeviceService {
         return mergedDevice;
       } catch (e) {
         AppConfig.offlineLog('Local connection failed: $e');
+
+        // In offline mode, don't fall back to server
+        if (isOffline) {
+          AppConfig.offlineLog('Offline mode: Skipping server fallback');
+          final cachedDevice = await _getCachedDeviceData(deviceId);
+          if (cachedDevice != null) {
+            AppConfig.offlineLog('Using cached live data');
+            return cachedDevice;
+          }
+          throw ApiException(message: 'Device not reachable and no cached data available');
+        }
+
         AppConfig.offlineLog('Falling back to server...');
       }
     }
 
-    // Fall back to server
-    try {
-      final response = await _apiClient.get('/api/devices/$deviceId');
-      final device = Device.fromJson(response.data);
+    // Fall back to server (only if not in offline mode)
+    if (!isOffline) {
+      try {
+        final response = await _apiClient.get('/api/devices/$deviceId');
+        final device = Device.fromJson(response.data);
 
-      // Use cached config if available to avoid overwriting
-      final mergedDevice = cachedConfig != null
-          ? device.copyWith(deviceConfig: cachedConfig)
-          : device;
+        // Use cached config if available to avoid overwriting
+        final mergedDevice = cachedConfig != null
+            ? device.copyWith(deviceConfig: cachedConfig)
+            : device;
 
-      // Cache the live data
-      await _cacheDeviceData(deviceId, mergedDevice);
+        // Cache the live data
+        await _cacheDeviceData(deviceId, mergedDevice);
 
-      return mergedDevice;
-    } catch (e) {
-      // Try to return cached data if available
+        return mergedDevice;
+      } catch (e) {
+        // Try to return cached data if available
+        final cachedDevice = await _getCachedDeviceData(deviceId);
+        if (cachedDevice != null) {
+          AppConfig.offlineLog('Using cached live data (server failed)');
+          return cachedDevice;
+        }
+
+        throw ApiException(message: 'Failed to fetch device data');
+      }
+    } else {
+      // Offline mode with no local IP - use cached data only
       final cachedDevice = await _getCachedDeviceData(deviceId);
       if (cachedDevice != null) {
-        AppConfig.offlineLog('Using cached live data (offline mode)');
+        AppConfig.offlineLog('Offline mode: Using cached live data');
         return cachedDevice;
       }
-
-      throw ApiException(message: 'Failed to fetch device data');
+      throw ApiException(message: 'No device data available in offline mode');
     }
   }
 

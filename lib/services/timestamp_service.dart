@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import '../models/timestamp_sync.dart';
 import '../config/app_config.dart';
 import 'api_client.dart';
+import 'offline_mode_service.dart';
 
 /// Service for timestamp synchronization with server and device
 ///
@@ -25,11 +26,20 @@ class TimestampService {
   static const Duration _timeout = Duration(seconds: 5);
   static const int _maxDriftMs = 5000; // 5 seconds max acceptable drift
   final ApiClient _apiClient = ApiClient();
+  final OfflineModeService _offlineModeService = OfflineModeService();
 
   /// Get current timestamp from server
   /// GET /api/timeSync?deviceId={deviceId}
   /// Returns server timestamp in milliseconds
   Future<ServerTimestampResponse?> getServerTimestamp(String deviceId) async {
+    // Skip server call in offline mode
+    final isOffline = await _offlineModeService.isOfflineModeEnabled();
+    if (isOffline) {
+      print('[TimestampService] Offline mode: Skipping server timestamp request');
+      AppConfig.deviceLog('Offline mode: Skipping server timestamp request');
+      return null;
+    }
+
     try {
       final response = await _apiClient.get(
         '/api/timeSync',
