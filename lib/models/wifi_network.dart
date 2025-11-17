@@ -42,11 +42,43 @@ class WiFiNetwork extends Equatable {
   /// Check if network is secured
   bool get isSecured => auth.toUpperCase() != 'OPEN';
 
+  /// Convert ESP32 encryption type integer to string
+  static String _encryptionTypeToString(int encryption) {
+    switch (encryption) {
+      case 0:
+        return 'OPEN';
+      case 1:
+        return 'WEP';
+      case 2:
+        return 'WPA';
+      case 3:
+        return 'WPA2';
+      case 4:
+        return 'WPA/WPA2';
+      case 5:
+        return 'WPA2-Enterprise';
+      default:
+        return 'UNKNOWN';
+    }
+  }
+
   factory WiFiNetwork.fromJson(Map<String, dynamic> json) {
+    // Handle both formats: device format (rssi, encryption) and app format (signal, auth)
+    final int signalValue = json['rssi'] as int? ?? json['signal'] as int? ?? -90;
+
+    String authValue;
+    if (json.containsKey('encryption')) {
+      // Device format: encryption is an integer
+      authValue = _encryptionTypeToString(json['encryption'] as int? ?? 0);
+    } else {
+      // App format: auth is already a string
+      authValue = json['auth'] as String? ?? 'UNKNOWN';
+    }
+
     return WiFiNetwork(
       ssid: json['ssid'] as String? ?? '',
-      signal: json['signal'] as int? ?? -90,
-      auth: json['auth'] as String? ?? 'UNKNOWN',
+      signal: signalValue,
+      auth: authValue,
     );
   }
 
