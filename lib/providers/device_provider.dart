@@ -2,12 +2,14 @@ import 'package:flutter/foundation.dart';
 import '../models/device.dart';
 import '../models/control_data.dart';
 import '../services/device_service.dart';
+import '../services/offline_mode_service.dart';
 import '../utils/api_exception.dart';
 import '../config/app_config.dart';
 
 /// Provider for device state management
 class DeviceProvider with ChangeNotifier {
   final DeviceService _deviceService = DeviceService();
+  final OfflineModeService _offlineModeService = OfflineModeService();
 
   List<Device> _devices = [];
   Device? _selectedDevice;
@@ -33,6 +35,7 @@ class DeviceProvider with ChangeNotifier {
   Future<void> initialize() async {
     try {
       await _deviceService.initialize();
+      await _offlineModeService.initialize();
     } catch (e) {
       _setError('Failed to initialize device service');
     }
@@ -44,11 +47,39 @@ class DeviceProvider with ChangeNotifier {
     _setError(null);
 
     try {
-      _devices = await _deviceService.getDevices(
-        assignedOnly: assignedOnly,
-        projectId: AppConfig.projectId, // Use configured project ID
-      );
-      _setLoading(false);
+      // Check if offline mode is enabled
+      final isOffline = await _offlineModeService.isOfflineModeEnabled();
+
+      if (isOffline) {
+        // Load offline devices from local storage
+        final offlineDevices = await _offlineModeService.getOfflineDevices();
+
+        // Convert offline devices to Device models (with minimal data)
+        _devices = offlineDevices.map((offlineDevice) {
+          return Device(
+            id: offlineDevice.deviceId,
+            deviceId: offlineDevice.deviceId,
+            name: offlineDevice.deviceName,
+            projectId: AppConfig.projectId,
+            projectName: 'Offline Mode',
+            deviceConfig: {},
+            controlData: {},
+            telemetryData: {},
+            isActive: false, // We'll update this when we fetch live data
+            localIp: offlineDevice.localIp,
+          );
+        }).toList();
+
+        AppConfig.offlineLog('Loaded ${_devices.length} offline devices');
+        _setLoading(false);
+      } else {
+        // Online mode: Fetch from server
+        _devices = await _deviceService.getDevices(
+          assignedOnly: assignedOnly,
+          projectId: AppConfig.projectId, // Use configured project ID
+        );
+        _setLoading(false);
+      }
     } on ApiException catch (e) {
       _setError(e.message);
       _setLoading(false);
