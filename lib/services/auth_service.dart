@@ -123,6 +123,7 @@ class AuthService {
       // Clear local session data
       await _apiClient.clearCookies();
       await _saveSessionState(false);
+      await _saveKeepLoggedIn(false); // Clear "keep logged in" preference
     } catch (e) {
       throw ApiException.fromError(e);
     }
@@ -132,6 +133,16 @@ class AuthService {
   Future<bool> isLoggedIn() async {
     try {
       _prefs ??= await SharedPreferences.getInstance();
+
+      // Check if user chose to stay logged in
+      final keepLoggedIn = _prefs?.getBool(AppConfig.keepLoggedInKey) ?? false;
+
+      // If user didn't choose "keep me logged in", treat as logged out
+      if (!keepLoggedIn) {
+        await _saveSessionState(false);
+        return false;
+      }
+
       final isLoggedIn = _prefs?.getBool(AppConfig.sessionStorageKey) ?? false;
 
       if (!isLoggedIn) return false;
