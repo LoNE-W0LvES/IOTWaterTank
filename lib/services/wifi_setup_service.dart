@@ -6,6 +6,7 @@ import '../utils/api_exception.dart';
 class WiFiSetupService {
   static const String _baseUrl = 'http://192.168.4.1';
   static const Duration _timeout = Duration(seconds: 5);
+  static const Duration _scanTimeout = Duration(seconds: 30); // Longer timeout for WiFi scan
 
   late final Dio _dio;
 
@@ -48,9 +49,16 @@ class WiFiSetupService {
 
   /// Scan for available WiFi networks
   /// GET http://192.168.4.1/{device_id}/scanWifi
+  /// Note: WiFi scanning can take 15-30 seconds, especially with concurrent sensor readings
   Future<WiFiScanResponse> scanWiFiNetworks(String deviceId) async {
     try {
-      final response = await _dio.get('/$deviceId/scanWifi');
+      final response = await _dio.get(
+        '/$deviceId/scanWifi',
+        options: Options(
+          receiveTimeout: _scanTimeout,
+          sendTimeout: _scanTimeout,
+        ),
+      );
 
       if (response.statusCode == 200) {
         return WiFiScanResponse.fromJson(response.data);
