@@ -29,8 +29,9 @@ class DeviceConfigParameter extends Equatable {
   /// Create from JSON
   factory DeviceConfigParameter.fromJson(String key, Map<String, dynamic> json) {
     // Parse lastModified - handle int, string (Unix timestamp), and ISO date string
+    // Also check for 'timestamp' field (used by ESP32 device)
     int? lastModified;
-    final lastModifiedValue = json['lastModified'];
+    final lastModifiedValue = json['lastModified'] ?? json['timestamp'];
     if (lastModifiedValue != null) {
       if (lastModifiedValue is int) {
         lastModified = lastModifiedValue;
@@ -56,18 +57,29 @@ class DeviceConfigParameter extends Equatable {
       options = (json['options'] as List).map((e) => e.toString()).toList();
     }
 
+    // Determine type - use provided type or infer from value
+    final value = json['value'];
+    String type = json['type'] as String? ?? _inferTypeFromValue(value);
+
     return DeviceConfigParameter(
       key: key,
       label: json['label'] as String? ?? key,
-      type: json['type'] as String,
-      value: json['value'],
-      defaultValue: json['defaultValue'],
+      type: type,
+      value: value,
+      defaultValue: json['defaultValue'] ?? value,
       lastModified: lastModified,
       system: json['system'] as bool? ?? false,
       options: options,
       description: json['description'] as String?,
       hidden: json['hidden'] as bool? ?? false,
     );
+  }
+
+  /// Infer parameter type from value
+  static String _inferTypeFromValue(dynamic value) {
+    if (value is bool) return 'boolean';
+    if (value is num) return 'number';
+    return 'string';
   }
 
   /// Convert to JSON for API requests
