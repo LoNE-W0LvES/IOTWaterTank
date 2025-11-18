@@ -68,17 +68,14 @@ class ControlData extends Equatable {
     if (timestamp > maxValidTimestamp) {
       final converted = timestamp ~/ 1000; // Divide by 1000 (microseconds to milliseconds)
       if (converted >= minValidTimestamp && converted <= maxValidTimestamp) {
-        print('[ControlData] Converted microsecond timestamp $timestamp to milliseconds: $converted');
         return converted;
       }
       // Still invalid after conversion - reject it
-      print('[ControlData] Invalid timestamp $timestamp (out of range), using null');
       return null;
     }
 
     // If timestamp is negative and out of range
     if (timestamp < minValidTimestamp) {
-      print('[ControlData] Invalid timestamp $timestamp (too small), using null');
       return null;
     }
 
