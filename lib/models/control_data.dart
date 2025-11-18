@@ -28,12 +28,14 @@ class ControlData extends Equatable {
     final lastModifiedValue = json['lastModified'];
     if (lastModifiedValue != null) {
       if (lastModifiedValue is int) {
-        lastModified = lastModifiedValue;
+        lastModified = _validateTimestamp(lastModifiedValue);
       } else if (lastModifiedValue is String) {
         // Try parsing as Unix timestamp first
-        lastModified = int.tryParse(lastModifiedValue);
-        // If that fails, try parsing as ISO date string
-        if (lastModified == null) {
+        final parsed = int.tryParse(lastModifiedValue);
+        if (parsed != null) {
+          lastModified = _validateTimestamp(parsed);
+        } else {
+          // Try parsing as ISO date string
           try {
             final dateTime = DateTime.parse(lastModifiedValue);
             lastModified = dateTime.millisecondsSinceEpoch;
@@ -54,6 +56,34 @@ class ControlData extends Equatable {
       lastModified: lastModified,
       system: json['system'] as bool? ?? false,
     );
+  }
+
+  /// Validate and fix timestamp (handle microseconds or invalid values)
+  static int? _validateTimestamp(int timestamp) {
+    // Valid range for DateTime in Dart: -8640000000000000 to 8640000000000000 ms
+    const maxValidTimestamp = 8640000000000000;
+    const minValidTimestamp = -8640000000000000;
+
+    // If timestamp is way too large, it might be in microseconds - convert to milliseconds
+    if (timestamp > maxValidTimestamp) {
+      final converted = timestamp ~/ 1000; // Divide by 1000 (microseconds to milliseconds)
+      if (converted >= minValidTimestamp && converted <= maxValidTimestamp) {
+        print('[ControlData] Converted microsecond timestamp $timestamp to milliseconds: $converted');
+        return converted;
+      }
+      // Still invalid after conversion - reject it
+      print('[ControlData] Invalid timestamp $timestamp (out of range), using null');
+      return null;
+    }
+
+    // If timestamp is negative and out of range
+    if (timestamp < minValidTimestamp) {
+      print('[ControlData] Invalid timestamp $timestamp (too small), using null');
+      return null;
+    }
+
+    // Valid timestamp
+    return timestamp;
   }
 
   /// Convert to JSON for API requests
